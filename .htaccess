@@ -1,0 +1,40 @@
+# ============================================================
+# Swap Solana Tokens — DonWeb (Apache) config
+# Equivalente a vercel.json + forzado de HTTPS
+# ============================================================
+
+# --- Forzar HTTPS ---
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# --- Security headers (equivalentes a vercel.json) ---
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+
+  # Nota: el Content-Security-Policy NO va acá porque ya está aplicado
+  # vía <meta http-equiv="Content-Security-Policy"> dentro de index.html.
+  # No se recomienda duplicarlo en un header salvo que se elimine el <meta>,
+  # para evitar mantener dos políticas separadas que puedan desincronizarse.
+</IfModule>
+
+# --- Evitar que Apache liste el contenido de carpetas ---
+Options -Indexes
+
+# --- Evitar acceso directo a archivos de configuración/ocultos ---
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+
+# --- Cache básico para assets estáticos (logo, favicon) ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/x-icon "access plus 30 days"
+</IfModule>
