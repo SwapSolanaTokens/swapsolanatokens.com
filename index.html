@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swap Solana Tokens</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="canonical" href="https://swapsolanatokens.com/">
+  <!-- PWA manifest: controls the "Add to Home Screen" icon and splash
+       screen (dark background + high-res icon instead of the browser's
+       default white background + low-res favicon). -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0d0b1e">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Swap Solana Tokens">
+  <!-- Content-Security-Policy is enforced via a real HTTP response header
+       (see vercel.json / .htaccess), not a <meta> tag. frame-ancestors only
+       takes effect from an HTTP header, so this had to move out of the HTML. -->
+  <script src="https://plugin.jup.ag/plugin-v1.js" data-preload defer></script>
+  <!-- deBridge widget: separate, independent integration for cross-chain
+       swaps. Not affiliated with the Jupiter plugin above. -->
+  <script src="https://app.debridge.finance/assets/scripts/widget.js" defer></script>
+  <style>
+    :root {
+      --jupiter-plugin-primary: 199, 242, 132;
+      --jupiter-plugin-background: 13, 11, 30;
+      --jupiter-plugin-primaryText: 232, 249, 255;
+      --jupiter-plugin-warning: 251, 191, 36;
+      --jupiter-plugin-interactive: 42, 36, 68;
+      --jupiter-plugin-module: 20, 16, 40;
+    }
+    html { scroll-behavior: smooth; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      background: #0d0b1e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #e8f9ff;
+      padding: 24px;
+    }
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-top: 28px;
+    }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+    .brand-icon-top {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 2px;
+    }
+    h1 {
+      font-size: 38.5px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.02em;
+      color: #c7f284;
+      text-align: center;
+    }
+    .subtitle {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 500;
+      color: #e8f9ff;
+      letter-spacing: 0.02em;
+      text-wrap: balance;
+    }
+    #jupiter-plugin {
+      width: 100%;
+      max-width: 480px;
+      height: 680px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    /* On mobile, the wallet picker (Phantom, Jupiter, etc.) renders as a
+       panel inside this container. With overflow:hidden that panel gets
+       clipped and nothing shows up when tapping "Connect". */
+    @media (max-width: 640px) {
+      #jupiter-plugin {
+        overflow: visible;
+      }
+    }
+    /* ---- Mobile wallet connect CTA (shown only via JS: mobile UA + no injected wallet) ---- */
+    .mobile-wallet-cta {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+    }
+    .mobile-wallet-cta.visible {
+      display: flex;
+    }
+    /* Subtle divider so the CTA card doesn't feel glued to the Jupiter
+       widget label right below it. Only applies when the CTA is actually
+       shown (mobile), so desktop layout is untouched. */
+    .mobile-wallet-cta.visible + .swap-col-label {
+      margin-top: 4px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .mobile-wallet-cta-text {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(232, 249, 255, 0.55);
+      text-align: center;
+    }
+    .mobile-wallet-cta-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .wallet-cta-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      padding: 9px 16px;
+      text-decoration: none;
+      color: #e8f9ff;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .wallet-cta-btn:hover {
+      background: rgba(199, 242, 132, 0.1);
+      border-color: rgba(199, 242, 132, 0.4);
+    }
+    .wallet-cta-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      object-fit: cover;
+      background: #fff;
+    }
+
+    .ticker-wrap {
+      width: 100%;
+      max-width: 680px;
+      overflow: hidden;
+      margin-bottom: 45px;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    }
+    .ticker {
+      display: flex;
+      width: max-content;
+      gap: 12px;
+      animation: scroll-left 270s linear infinite;
+    }
+    .ticker:hover {
+      animation-play-state: paused;
+    }
+    @keyframes scroll-left {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+    .coin-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 8px 16px;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      flex-shrink: 0;
+    }
+    .coin-chip:hover {
+      background: rgba(199, 242, 132, 0.1);
+      border-color: rgba(199, 242, 132, 0.4);
+    }
+    .coin-emoji {
+      font-size: 18px;
+    }
+    .coin-symbol {
+      font-weight: 600;
+      font-size: 14.5px;
+    }
+    .coin-price {
+      font-size: 14.5px;
+      color: rgba(232, 249, 255, 0.6);
+      font-variant-numeric: tabular-nums;
+    }
+    .coin-change.up { color: #7ee787; }
+    .coin-change.down { color: #ff7b72; }
+    .coin-change {
+      font-size: 13.5px;
+      font-variant-numeric: tabular-nums;
+    }
+    .swap-area {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 20px;
+      width: 100%;
+      margin-bottom: 40px;
+    }
+    .swap-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .swap-col-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 4px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #e8f9ff;
+    }
+    .swap-col-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #7ee787;
+      flex-shrink: 0;
+    }
+    .swap-col-sub {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: rgba(232, 249, 255, 0.4);
+    }
+    .bridge-wrap {
+      width: 100%;
+      max-width: 480px;
+      min-height: 740px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    @media (max-width: 640px) {
+      .bridge-wrap {
+        overflow: visible;
+      }
+    }
+    .chart-panel {
+      width: 100%;
+      max-width: 680px;
+      margin-top: -8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 4px;
+      flex-wrap: wrap;
+    }
+    .chart-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .chart-live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #7ee787;
+      box-shadow: 0 0 0 3px rgba(126, 231, 135, 0.18);
+      flex-shrink: 0;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .chart-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #e8f9ff;
+      letter-spacing: -0.01em;
+    }
+    .chart-title-sub {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(232, 249, 255, 0.4);
+    }
+    .chart-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .interval-switch {
+      display: flex;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .interval-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: rgba(232, 249, 255, 0.5);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .interval-btn:hover {
+      color: rgba(232, 249, 255, 0.8);
+    }
+    .interval-btn.active {
+      background: linear-gradient(135deg, #c7f284, #9b8cff);
+      color: #0d0b1e;
+    }
+    .chart-badge {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(232, 249, 255, 0.4);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+    .chart-explainer {
+      margin: 0;
+      padding: 0 4px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: rgba(232, 249, 255, 0.45);
+    }
+    .chart-frame-wrap {
+      width: 100%;
+      height: 420px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #0c0a1a;
+      position: relative;
+    }
+    .chart-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .chart-frame.loaded {
+      opacity: 1;
+    }
+    .chart-frame-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13.5px;
+      color: rgba(232, 249, 255, 0.35);
+      pointer-events: none;
+    }
+    @media (max-width: 480px) {
+      .chart-frame-wrap {
+        height: max(480px, 58vh);
+      }
+      .chart-header {
+        justify-content: center;
+        text-align: center;
+      }
+      .chart-controls {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    .info-section {
+      width: 100%;
+      max-width: 680px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 28px 26px;
+      text-align: center;
+    }
+    .info-title {
+      font-size: 22.5px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      color: #c7f284;
+      text-wrap: balance;
+    }
+    .info-lead {
+      margin: 0 0 20px 0;
+      font-size: 16px;
+      color: rgba(232, 249, 255, 0.6);
+      line-height: 1.5;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      text-align: left;
+    }
+    @media (max-width: 560px) {
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .info-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .info-icon {
+      font-size: 20.5px;
+      flex-shrink: 0;
+      line-height: 1.3;
+    }
+    .info-item-title {
+      font-weight: 600;
+      font-size: 16px;
+      margin: 0 0 2px 0;
+      color: #e8f9ff;
+    }
+    .info-item-text {
+      margin: 0;
+      font-size: 14.5px;
+      color: rgba(232, 249, 255, 0.55);
+      line-height: 1.4;
+    }
+    .info-brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 0 0 14px 0;
+    }
+    .info-brand-row .brand-icon {
+      width: 24px;
+      height: 24px;
+    }
+    .info-brand-name {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: rgba(232, 249, 255, 0.85);
+    }
+    .powered-by {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 22px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 13.5px;
+      color: rgba(232, 249, 255, 0.5);
+    }
+    .powered-by strong {
+      color: rgba(232, 249, 255, 0.8);
+      font-weight: 700;
+    }
+    .jupiter-logo-img {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      vertical-align: middle;
+    }
+
+    /* ---- Content sections: About / How it works / FAQ / Legal ---- */
+    .content-sections {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 26px;
+    }
+    .panel-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #e8f9ff;
+      margin: 0 0 10px 0;
+    }
+    .panel h2 {
+      font-size: 21.5px;
+      font-weight: 700;
+      margin: 0 0 10px 0;
+      color: #c7f284;
+    }
+    .panel p {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      line-height: 1.6;
+      color: rgba(232, 249, 255, 0.65);
+    }
+    .panel p:last-child { margin-bottom: 0; }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 4px;
+    }
+    .step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .step-index {
+      flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14.5px;
+      font-weight: 700;
+      background: linear-gradient(135deg, rgba(199, 242, 132, 0.18), rgba(155, 140, 255, 0.18));
+      border: 1px solid rgba(199, 242, 132, 0.3);
+      color: #c7f284;
+    }
+    .step-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: #e8f9ff;
+      margin: 0 0 2px 0;
+    }
+    .step-text {
+      font-size: 14.5px;
+      color: rgba(232, 249, 255, 0.55);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .step-group-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #c7f284;
+      margin: 4px 0 2px 0;
+    }
+    .step-group-label:not(:first-child) {
+      margin-top: 10px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .faq-item {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-item summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #e8f9ff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: "+";
+      font-size: 20.5px;
+      font-weight: 400;
+      color: #c7f284;
+      flex-shrink: 0;
+      transition: transform 0.15s ease;
+    }
+    .faq-item[open] summary::after {
+      transform: rotate(45deg);
+    }
+    .faq-item p {
+      margin: 0 0 14px 0;
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: rgba(232, 249, 255, 0.55);
+    }
+
+    .legal-panel p {
+      font-size: 14px;
+      color: rgba(232, 249, 255, 0.45);
+    }
+
+    /* ---- Utility classes (replace one-off inline styles for CSP compliance) ---- */
+    .link-accent {
+      color: #c7f284;
+    }
+    .link-powered {
+      color: rgba(232, 249, 255, 0.8);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .audits-badge-grid {
+      margin-top: 22px;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .audits-subtext {
+      font-size: 15px;
+      color: rgba(232, 249, 255, 0.5);
+      margin: 0 0 4px 0;
+    }
+    .tech-footnote {
+      font-size: 13.5px;
+      color: rgba(232, 249, 255, 0.4);
+      margin-top: 16px;
+    }
+
+    /* ---- Contact / press badges ---- */
+    .contact-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .badge-grid {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 18px;
+      width: 100%;
+    }
+    .badge-card {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 250px;
+      height: 54px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 5px;
+      text-decoration: none;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+    .badge-card:hover {
+      background: rgba(199, 242, 132, 0.08);
+      border-color: rgba(199, 242, 132, 0.35);
+      transform: translateY(-2px);
+    }
+    .badge-card img {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      border-radius: 6px;
+    }
+    .badge-card.social-badge {
+      gap: 9px;
+      color: rgba(232, 249, 255, 0.9);
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .badge-card.social-badge svg {
+      width: 21px;
+      height: 21px;
+      fill: currentColor;
+      flex-shrink: 0;
+    }
+    .badge-card.social-badge .badge-handle {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.2;
+    }
+    .badge-card.social-badge .badge-platform {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: rgba(232, 249, 255, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-card.telegram-badge:hover {
+      background: rgba(155, 140, 255, 0.08);
+      border-color: rgba(155, 140, 255, 0.35);
+    }
+    .badge-card.trustpilot-badge {
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+    .badge-card.trustpilot-badge svg {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      display: block;
+    }
+    .badge-card.trustpilot-badge:hover svg rect {
+      fill: #2b2b2b;
+    }
+
+    /* ---- Audit badges ---- */
+    .audit-badge {
+      display: block;
+      width: 100%;
+      max-width: 340px;
+      text-decoration: none;
+      border-radius: 12px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .audit-badge:hover {
+      transform: translateY(-2px);
+    }
+    .audit-badge-inner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid;
+      width: 100%;
+    }
+    .audit-logo-wrap {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .audit-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .audit-service {
+      font-size: 14.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .audit-desc {
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .audit-grade {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      min-width: 48px;
+      padding: 6px 10px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    /* SSL Labs */
+    .ssllabs-badge {
+      background: linear-gradient(135deg, #0a1f3a 0%, #0d2e52 100%);
+      border-color: #1e5fa8;
+    }
+    .ssllabs-badge:hover {
+      border-color: #3a8fd4;
+      box-shadow: 0 4px 20px rgba(58, 143, 212, 0.2);
+    }
+    .ssllabs-badge .audit-service { color: #e8f4ff; }
+    .ssllabs-badge .audit-desc { color: rgba(147, 197, 253, 0.6); }
+    .ssllabs-grade {
+      background: linear-gradient(135deg, #1565c0, #0d47a1);
+      color: #ffffff;
+      font-size: 26px;
+      border: 1px solid #1976d2;
+      min-width: 46px;
+      min-height: 46px;
+      border-radius: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    /* Pentest-Tools */
+    .pentest-badge {
+      background: linear-gradient(135deg, #12121f 0%, #1a1a2e 100%);
+      border-color: #e94560;
+    }
+    .pentest-badge:hover {
+      border-color: #ff6b6b;
+      box-shadow: 0 4px 20px rgba(233, 69, 96, 0.2);
+    }
+    .pentest-badge .audit-service { color: #ff8fa3; }
+    .pentest-badge .audit-desc { color: rgba(255, 143, 163, 0.5); }
+    .pentest-grade {
+      background: rgba(233, 69, 96, 0.12);
+      border: 1px solid rgba(233, 69, 96, 0.4);
+      gap: 1px;
+      min-width: 52px;
+      min-height: 46px;
+    }
+    .pentest-risk {
+      font-size: 22px;
+      font-weight: 800;
+      color: #4ade80;
+    }
+    .pentest-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* VirusTotal */
+    .virustotal-badge {
+      background: linear-gradient(135deg, #0f1923 0%, #1a2332 100%);
+      border-color: #394eff;
+    }
+    .virustotal-badge:hover {
+      border-color: #6b7bff;
+      box-shadow: 0 4px 20px rgba(57, 78, 255, 0.2);
+    }
+    .virustotal-badge .audit-service { color: #c7d2fe; }
+    .virustotal-badge .audit-desc { color: rgba(199, 210, 254, 0.5); }
+    .virustotal-grade {
+      background: rgba(57, 78, 255, 0.12);
+      border: 1px solid rgba(57, 78, 255, 0.4);
+      flex-direction: row;
+      align-items: baseline;
+      gap: 1px;
+      padding: 6px 8px;
+      min-height: 46px;
+    }
+    .vt-count {
+      font-size: 22px;
+      font-weight: 800;
+      color: #4ade80;
+    }
+    .vt-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(199, 210, 254, 0.5);
+    }
+
+    /* ---- Footer ---- */
+    footer {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 28px 0 8px 0;
+      text-align: center;
+    }
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #c7f284;
+    }
+    .footer-brand .brand-icon {
+      width: 22px;
+      height: 22px;
+    }
+    .footer-powered {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14.5px;
+      color: rgba(232, 249, 255, 0.5);
+    }
+    .footer-powered a {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: #e8f9ff;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .footer-powered a:hover {
+      text-decoration: underline;
+    }
+    .footer-copy {
+      font-size: 13px;
+      color: rgba(232, 249, 255, 0.3);
+    }
+    .footer-contact-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .footer-contact-sep {
+      color: rgba(232, 249, 255, 0.25);
+    }
+    .footer-contact-email {
+      color: rgba(232, 249, 255, 0.45);
+      text-decoration: underline;
+    }
+    .social-link-inline {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(232, 249, 255, 0.45);
+      transition: color 0.15s ease;
+    }
+    .social-link-inline:hover {
+      color: #c7f284;
+    }
+    .social-link-inline svg {
+      width: 15px;
+      height: 15px;
+      fill: currentColor;
+    }
+
+    /* ---- Top navigation bar ---- */
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      background: rgba(13, 11, 30, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .topnav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 0 20px;
+      max-width: 680px;
+      width: 100%;
+      height: 48px;
+    }
+    .topnav-link {
+      color: #c7f284;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+      letter-spacing: 0.01em;
+      transition: background 0.15s ease, color 0.15s ease;
+      white-space: nowrap;
+    }
+    .topnav-link:hover {
+      background: rgba(199, 242, 132, 0.12);
+      color: #d8f89e;
+    }
+    .topnav-icon {
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      .topnav {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        border-bottom: none;
+        background: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)), #0d0b1e;
+      }
+      .topnav-inner {
+        height: 60px;
+        padding: 0 2px;
+        gap: 0;
+      }
+      .topnav-link {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        font-size: 9.8px;
+        line-height: 1.15;
+        padding: 6px 1px;
+        white-space: normal;
+        text-align: center;
+      }
+      .topnav-icon {
+        display: block;
+        font-size: 17.5px;
+        line-height: 1;
+      }
+      body {
+        padding-bottom: 76px;
+      }
+      .nav-anchor {
+        scroll-margin-top: 0;
+      }
+    }
+
+    /* Offset para compensar el navbar sticky al navegar por anclas (desktop) */
+    .nav-anchor {
+      scroll-margin-top: 68px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav" aria-label="Site navigation">
+    <div class="topnav-inner">
+      <a class="topnav-link" href="#swap-section"><span class="topnav-icon" aria-hidden="true">🔁</span>Swap</a>
+      <a class="topnav-link" href="#bridge-section"><span class="topnav-icon" aria-hidden="true">🌉</span>Bridge</a>
+      <a class="topnav-link" href="#chart-section"><span class="topnav-icon" aria-hidden="true">📈</span>Chart</a>
+      <a class="topnav-link" href="#how-it-works-section"><span class="topnav-icon" aria-hidden="true">⚙️</span>How it works</a>
+      <a class="topnav-link" href="#faq-section"><span class="topnav-icon" aria-hidden="true">💬</span>FAQ</a>
+      <a class="topnav-link" href="#tech-section"><span class="topnav-icon" aria-hidden="true">🔧</span>Tech</a>
+      <a class="topnav-link" href="#contact-section"><span class="topnav-icon" aria-hidden="true">📣</span>Contact</a>
+    </div>
+  </nav>
+
+  <div class="header">
+    <img class="brand-icon brand-icon-top" src="logo.png" alt="Swap Solana Tokens logo">
+    <h1>Swap Solana Tokens</h1>
+    <p class="subtitle">Best price, best route, every swap</p>
+  </div>
+
+  <div class="ticker-wrap">
+    <div class="ticker" id="ticker"></div>
+  </div>
+
+  <div class="swap-area nav-anchor" id="swap-section">
+    <div class="swap-col">
+      <div class="mobile-wallet-cta" id="mobile-wallet-cta">
+        <p class="mobile-wallet-cta-text">Connect your wallet by opening the swap in:</p>
+        <div class="mobile-wallet-cta-buttons">
+          <a class="wallet-cta-btn" id="wallet-btn-phantom" href="https://phantom.app" target="_blank" rel="noopener noreferrer">
+            <img class="wallet-cta-icon" src="https://www.google.com/s2/favicons?sz=64&domain=phantom.app" alt="Phantom">
+            Phantom
+          </a>
+          <a class="wallet-cta-btn" id="wallet-btn-solflare" href="https://solflare.com" target="_blank" rel="noopener noreferrer">
+            <img class="wallet-cta-icon" src="https://www.google.com/s2/favicons?sz=64&domain=solflare.com" alt="Solflare">
+            Solflare
+          </a>
+          <a class="wallet-cta-btn" id="wallet-btn-backpack" href="https://backpack.app" target="_blank" rel="noopener noreferrer">
+            <img class="wallet-cta-icon" src="https://www.google.com/s2/favicons?sz=64&domain=backpack.app" alt="Backpack">
+            Backpack
+          </a>
+        </div>
+      </div>
+      <div class="swap-col-label">
+        <span class="swap-col-dot" aria-hidden="true"></span>
+        Swap <span class="swap-col-sub">via Jupiter</span>
+      </div>
+      <div id="jupiter-plugin"></div>
+    </div>
+    <div class="swap-col" id="bridge-section">
+      <div class="swap-col-label">
+        <span class="swap-col-dot" aria-hidden="true"></span>
+        Bridge <span class="swap-col-sub">via deBridge</span>
+      </div>
+      <div class="bridge-wrap" id="debridge-widget"></div>
+    </div>
+  </div>
+
+  <div class="chart-panel nav-anchor" id="chart-section">
+    <div class="chart-header">
+      <div class="chart-title-group">
+        <span class="chart-live-dot" aria-hidden="true"></span>
+        <span class="chart-title" id="chart-title">SOL</span>
+        <span class="chart-title-sub">Jupiter swap chart</span>
+      </div>
+      <div class="chart-controls">
+        <div class="interval-switch" id="interval-switch" role="group" aria-label="Chart timeframe">
+          <button type="button" class="interval-btn" data-interval="15">15m</button>
+          <button type="button" class="interval-btn active" data-interval="60">1H</button>
+          <button type="button" class="interval-btn" data-interval="240">4H</button>
+          <button type="button" class="interval-btn" data-interval="1D">1D</button>
+        </div>
+        <span class="chart-badge">via Birdeye</span>
+      </div>
+    </div>
+    <p class="chart-explainer">This chart tracks the token in the Jupiter swap panel only — it doesn't reflect the deBridge bridge panel. Pick a coin above, or tap one in the ticker or inside the swap widget, and the candles switch automatically — powered by live pricing from Birdeye. Use 15m / 1H / 4H / 1D to change the timeframe.</p>
+    <div class="chart-frame-wrap">
+      <span class="chart-frame-loading" id="chart-loading">Loading chart…</span>
+      <iframe
+        id="price-chart"
+        class="chart-frame"
+        title="Price chart"
+        frameborder="0"
+        loading="lazy"
+        sandbox="allow-scripts allow-same-origin allow-popups"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allow=""
+      ></iframe>
+    </div>
+  </div>
+
+  <div class="info-section">
+    <div class="info-brand-row">
+      <img class="brand-icon" src="logo.png" alt="Swap Solana Tokens logo">
+      <span class="info-brand-name">Swap Solana Tokens</span>
+    </div>
+    <h2 class="info-title">Swap on Solana. Bridge in from anywhere.</h2>
+    <p class="info-lead">
+      Two tools, one page: a Solana swap panel powered by Jupiter, Solana's leading swap aggregator, and a cross-chain bridge panel powered by deBridge for moving assets in from Ethereum, BNB Chain, Polygon and other chains. Every trade and every bridge routes straight through each protocol's own liquidity — so you land the best fill, every time.
+    </p>
+    <div class="info-grid">
+      <div class="info-item">
+        <span class="info-icon">💹</span>
+        <div>
+          <p class="info-item-title">Best price, every fill</p>
+          <p class="info-item-text">Jupiter scans every Solana DEX and liquidity pool in real time to route your swap through the best price available.</p>
+        </div>
+      </div>
+      <div class="info-item">
+        <span class="info-icon">🛡️</span>
+        <div>
+          <p class="info-item-title">Non-custodial, always</p>
+          <p class="info-item-text">Your keys, your crypto. Swaps settle wallet-to-wallet through audited, battle-tested smart contracts.</p>
+        </div>
+      </div>
+      <div class="info-item">
+        <span class="info-icon">💸</span>
+        <div>
+          <p class="info-item-title">Fees that don't bite</p>
+          <p class="info-item-text">Solana's near-zero gas plus Jupiter's route optimization keeps costs to a minimum on every trade.</p>
+        </div>
+      </div>
+      <div class="info-item">
+        <span class="info-icon">⚡</span>
+        <div>
+          <p class="info-item-title">Blink-and-it's-done speed</p>
+          <p class="info-item-text">Sub-second finality means no mempool waits and no gas wars — just fast, clean execution.</p>
+        </div>
+      </div>
+      <div class="info-item">
+        <span class="info-icon">🌉</span>
+        <div>
+          <p class="info-item-title">Bridge in from anywhere</p>
+          <p class="info-item-text">Coming from Ethereum, BNB Chain, Polygon or another chain? Bridge straight into Solana with the deBridge widget right next to the swap panel.</p>
+        </div>
+      </div>
+    </div>
+    <div class="powered-by"><img class="jupiter-logo-img" src="https://static.jup.ag/jup/icon.png" alt="Jupiter logo"> Powered by <a href="https://jup.ag" target="_blank" rel="noopener noreferrer" class="link-powered">Jupiter</a> &amp; <img class="jupiter-logo-img" src="https://www.google.com/s2/favicons?sz=64&domain=debridge.com" alt="deBridge logo"> <a href="https://debridge.com" target="_blank" rel="noopener noreferrer" class="link-powered">deBridge</a></div>
+  </div>
+
+  <div class="content-sections">
+    <div class="panel">
+      <p class="panel-eyebrow">🪐 About</p>
+      <h2>One page, two ways to move your assets</h2>
+      <p>Swap Solana Tokens is an integrated platform combining two things you'd normally need two separate sites for: swapping SPL tokens on Solana, and bridging assets in from other chains. Neither is a standalone exchange or bridge of our own — both panels are focused front-ends running on official third-party plugins and APIs.</p>
+      <p>The <strong>Swap</strong> panel runs on Jupiter's plugin and API, the same aggregation engine routing the majority of swap volume across the Solana ecosystem. No order book of our own, no extra smart-contract risk — every quote and every fill comes straight from Jupiter's liquidity.</p>
+      <p>The <strong>Bridge</strong> panel, right next to it, runs on <a href="https://debridge.com" target="_blank" rel="noopener noreferrer" class="link-accent">deBridge</a>, an independent, non-custodial cross-chain protocol — not affiliated with Jupiter or with Swap Solana Tokens. It lets you move assets from Ethereum, BNB Chain, Polygon, Arbitrum and other chains directly into Solana (or back out again), so you can bridge in and swap on the same page.</p>
+    </div>
+
+    <div class="panel nav-anchor" id="how-it-works-section">
+      <p class="panel-eyebrow">⚙️ How it works</p>
+      <h2>Swap on Solana, or bridge in first</h2>
+      <div class="steps">
+        <p class="step-group-label">🔁 Swapping on Solana</p>
+        <div class="step">
+          <div class="step-index">1</div>
+          <div>
+            <p class="step-title">Connect your wallet</p>
+            <p class="step-text">Phantom, Backpack, Solflare or any Solana wallet — connect right inside the Jupiter swap widget.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">2</div>
+          <div>
+            <p class="step-title">Pick your pair</p>
+            <p class="step-text">Choose what you're swapping from and to, or tap a coin in the ticker to load it instantly.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">3</div>
+          <div>
+            <p class="step-title">Check the route</p>
+            <p class="step-text">Jupiter scans every Solana DEX and shows you the best price, route and expected slippage.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">4</div>
+          <div>
+            <p class="step-title">Confirm and send it</p>
+            <p class="step-text">Approve in your wallet. Solana's speed means it usually lands in well under a second.</p>
+          </div>
+        </div>
+        <p class="step-group-label">🌉 Bridging from another chain</p>
+        <div class="step">
+          <div class="step-index">1</div>
+          <div>
+            <p class="step-title">Connect your other-chain wallet</p>
+            <p class="step-text">Open the deBridge panel next to the swap widget and connect a wallet like MetaMask on Ethereum, BNB Chain, Polygon, Arbitrum and other supported chains.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">2</div>
+          <div>
+            <p class="step-title">Pick your asset and destination</p>
+            <p class="step-text">Choose what you're sending and confirm Solana as the destination — deBridge finds the best cross-chain route automatically.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">3</div>
+          <div>
+            <p class="step-title">Confirm the bridge</p>
+            <p class="step-text">Approve in your wallet. Once the assets land in your Solana wallet, the bridge is done.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">4</div>
+          <div>
+            <p class="step-title">Swap normally with Jupiter</p>
+            <p class="step-text">With assets now on Solana, use the Jupiter panel above to swap into any token — same four steps as the Solana flow.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel nav-anchor" id="faq-section">
+      <p class="panel-eyebrow">💬 FAQ</p>
+      <h2>Common questions</h2>
+      <details class="faq-item" open>
+        <summary>Is this an official Jupiter or deBridge product?</summary>
+        <p>No, to both. This is an independent front-end: the swap panel plugs into Jupiter's official plugin and public price API, and the bridge panel plugs into deBridge's official widget. We're not affiliated with, endorsed by, or operated by either Jupiter Exchange or deBridge. All routing, execution and pricing come straight from each protocol's own infrastructure.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Does this site custody my funds?</summary>
+        <p>Never. Swaps settle wallet-to-wallet through Jupiter's audited smart contracts. We never touch your funds or private keys at any point.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Why is there a referral fee?</summary>
+        <p>A 0.5% fee, Jupiter's minimum, is baked into the quote to help run this front-end. What you see is what you pay — no surprises at signing.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Can I bring tokens from other chains?</summary>
+        <p>Yes. Next to the Jupiter swap panel there's a separate bridge widget powered by deBridge, a non-custodial cross-chain protocol independent from Jupiter. It lets you move assets from Ethereum, BNB Chain, Polygon, Arbitrum and other chains into Solana, or the other way around. A 0.3% fee is baked into the quote there too — this is deBridge's own fee mechanism, separate from Jupiter's referral fee above.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Why do I see extra wallet buttons on mobile?</summary>
+        <p>On a regular mobile browser (Chrome/Safari), the Swap panel sometimes can't detect your wallet. Tap the Phantom, Solflare, or Backpack button to open the swap inside that wallet's own browser and connect normally. The Bridge panel doesn't have this limitation and works the same on any browser.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Which wallets can I use?</summary>
+        <p>Depends on the panel. For the <strong>Swap</strong> panel, any Solana wallet Jupiter's plugin supports — Phantom, Solflare, Backpack and others — connect right inside that widget. For the <strong>Bridge</strong> panel, deBridge supports wallets on the chain you're bridging from, including MetaMask and other EVM wallets on Ethereum, BNB Chain, Polygon, Arbitrum and more, plus a Solana wallet to receive on this end. You'll pick the right wallet the moment you hit connect in each panel.</p>
+      </details>
+      <details class="faq-item">
+        <summary>What if a swap fails or slips?</summary>
+        <p>Network congestion or fast-moving prices can occasionally push a trade past your slippage tolerance, and it'll fail safely. Nothing is deducted — just try again.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How does the price chart work?</summary>
+        <p>The chart is an embedded, public Birdeye widget — the same charting engine used across the Solana ecosystem — showing candlestick pricing for the token currently loaded in the Jupiter swap panel. It doesn't track the deBridge bridge panel. It starts on SOL, but the moment you pick a different output token (either inside the swap widget or by tapping a coin in the scrolling ticker above), the chart swaps to that token's most liquid market automatically, no page reload needed.</p>
+        <p>Use the 15m / 1H / 4H / 1D buttons to change the candle interval — this only changes how the chart is drawn, it never affects your trade. Pricing and candle data come straight from Birdeye's public infrastructure, not from us, so the chart is for informational purposes only and can lag by a few seconds behind the live quote you see in the swap widget. Always double check the quoted price and route before confirming a swap.</p>
+      </details>
+    </div>
+
+    <div class="panel contact-panel nav-anchor" id="contact-section">
+      <p class="panel-eyebrow">📣 Contact & reviews</p>
+      <h2>Comments, reviews, contact? Find us at:</h2>
+      <div class="badge-grid">
+        <a class="badge-card" href="https://www.producthunt.com/products/swap-solana-tokens?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-swap-solana-tokens" target="_blank" rel="noopener noreferrer">
+          <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1210330&theme=light&t=1785602700583" alt="Swap Solana Tokens - Fast, clean, and secure token swaps on Solana network. | Product Hunt" width="250" height="54" loading="lazy">
+        </a>
+        <a class="badge-card trustpilot-badge" href="https://www.trustpilot.com/review/swapsolanatokens.com" target="_blank" rel="noopener noreferrer" aria-label="Swap Solana Tokens reviews on Trustpilot">
+          <svg viewBox="0 0 200 44" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+            <rect width="200" height="44" rx="6" fill="#191919"/>
+            <path fill="#00b67a" d="M26 10 L29.6 19.1 L39.4 19.9 L31.8 26.4 L34.2 36 L26 30.7 L17.8 36 L20.2 26.4 L12.6 19.9 L22.4 19.1 Z"/>
+            <text x="46" y="28" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#ffffff">Trustpilot</text>
+          </svg>
+        </a>
+        <a class="badge-card social-badge" href="https://x.com/swapsolanasite" target="_blank" rel="noopener noreferrer" aria-label="Swap Solana Tokens on X">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          <span class="badge-handle"><span class="badge-platform">X</span>@SwapSolanaTokens</span>
+        </a>
+        <a class="badge-card social-badge telegram-badge" href="https://t.me/SwapSolanaTokens" target="_blank" rel="noopener noreferrer" aria-label="Swap Solana Tokens on Telegram">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M21.94 4.6 18.6 20.16c-.25 1.13-.9 1.4-1.83.87l-5.06-3.73-2.44 2.35c-.27.27-.5.5-1.02.5l.36-5.16 9.4-8.5c.41-.36-.09-.56-.63-.2L6.3 13.06l-5.02-1.57c-1.09-.34-1.11-1.09.23-1.61L20.6 3.32c.91-.33 1.71.22 1.34 1.28z"/>
+          </svg>
+          <span class="badge-handle"><span class="badge-platform">Telegram</span>@SwapSolanaTokens</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="panel contact-panel" id="audits-panel">
+      <p class="panel-eyebrow">🔍 Security audits</p>
+      <h2>Third-party security reports</h2>
+      <p class="audits-subtext">Independent scans and audits run against swapsolanatokens.com. Click any badge to view the full report.</p>
+      <div class="badge-grid audits-badge-grid">
+
+        <!-- SSL Labs -->
+        <a class="audit-badge"
+           href="https://www.ssllabs.com/ssltest/analyze.html?d=swapsolanatokens.com"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="SSL Labs report for swapsolanatokens.com">
+          <div class="audit-badge-inner ssllabs-badge">
+            <div class="audit-logo-wrap">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="32" height="32" rx="6" fill="#1a3a5c"/>
+                <path d="M16 5 L27 10 L27 17 C27 22.5 22 27 16 29 C10 27 5 22.5 5 17 L5 10 Z" fill="#1e5fa8" stroke="#3a8fd4" stroke-width="1"/>
+                <path d="M16 8 L24 12 L24 17.5 C24 21.5 20.5 25 16 26.5 C11.5 25 8 21.5 8 17.5 L8 12 Z" fill="#0d2e52"/>
+                <path d="M13 16 L15.2 18.5 L19.5 13.5" stroke="#4fc3f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="audit-info">
+              <span class="audit-service">Qualys SSL Labs</span>
+              <span class="audit-desc">SSL/TLS Server Test</span>
+            </div>
+            <div class="audit-grade ssllabs-grade">A</div>
+          </div>
+        </a>
+
+        <!-- VirusTotal -->
+        <a class="audit-badge"
+           href="https://www.virustotal.com/gui/url/4bb45ad69c4723e3ebdd092eaa346e299670381685d3e712afb0c4c89f023028?nocache=1"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="VirusTotal scan for swapsolanatokens.com">
+          <div class="audit-badge-inner virustotal-badge">
+            <div class="audit-logo-wrap">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="32" height="32" rx="6" fill="#1a2332"/>
+                <!-- VT checkmark icon -->
+                <path d="M7 16 L13 22 L25 10" stroke="#394eff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="audit-info">
+              <span class="audit-service">VirusTotal</span>
+              <span class="audit-desc">URL &amp; Domain Scan</span>
+            </div>
+            <div class="audit-grade virustotal-grade">
+              <span class="vt-count">0</span>
+              <span class="vt-label">/ 90</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Security Headers -->
+        <a class="audit-badge"
+           href="https://securityheaders.com/?q=https%3A%2F%2Fswapsolanatokens.com&followRedirects=on"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="Security Headers report for swapsolanatokens.com">
+          <div class="audit-badge-inner ssllabs-badge">
+            <div class="audit-logo-wrap">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="32" height="32" rx="6" fill="#12261c"/>
+                <rect x="8" y="14" width="16" height="11" rx="2" fill="#0d2e52" stroke="#3a8fd4" stroke-width="1"/>
+                <path d="M11 14 V10 a5 5 0 0 1 10 0 V14" fill="none" stroke="#4fc3f7" stroke-width="2"/>
+                <circle cx="16" cy="19" r="1.6" fill="#4fc3f7"/>
+              </svg>
+            </div>
+            <div class="audit-info">
+              <span class="audit-service">Security Headers</span>
+              <span class="audit-desc">HTTP Response Header Scan</span>
+            </div>
+            <div class="audit-grade ssllabs-grade">A</div>
+          </div>
+        </a>
+
+        <!-- Mozilla HTTP Observatory -->
+        <a class="audit-badge"
+           href="https://developer.mozilla.org/en-US/observatory/analyze?host=swapsolanatokens.com"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="Mozilla HTTP Observatory report for swapsolanatokens.com">
+          <div class="audit-badge-inner virustotal-badge">
+            <div class="audit-logo-wrap">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="32" height="32" rx="6" fill="#1a2332"/>
+                <circle cx="16" cy="16" r="9" fill="none" stroke="#394eff" stroke-width="2"/>
+                <path d="M16 16 L16 10.5" stroke="#6b7bff" stroke-width="2" stroke-linecap="round"/>
+                <path d="M16 16 L20 18.5" stroke="#6b7bff" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="audit-info">
+              <span class="audit-service">Mozilla Observatory</span>
+              <span class="audit-desc">HTTP Security Configuration Scan</span>
+            </div>
+            <div class="audit-grade virustotal-grade">
+              <span class="vt-count">A+</span>
+            </div>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <div class="panel nav-anchor" id="tech-section">
+      <p class="panel-eyebrow">🔧 Technical info</p>
+      <h2>Don't trust us — verify it yourself</h2>
+      <p>Swap Solana Tokens has no smart contracts, no order book and no backend of its own. Every swap you execute here calls Jupiter's official, publicly verified infrastructure directly from your browser. Below are links straight to Jupiter's own sources, not copies hosted by us — that way this information stays accurate even after Jupiter ships an upgrade.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-index">📖</div>
+          <div>
+            <p class="step-title">Jupiter developer documentation</p>
+            <p class="step-text">Official API reference and integration docs, maintained by the Jupiter team. <a href="https://dev.jup.ag/" target="_blank" rel="noopener noreferrer" class="link-accent">dev.jup.ag</a></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">🔁</div>
+          <div>
+            <p class="step-title">Swap API reference</p>
+            <p class="step-text">The exact API this site's plugin calls to fetch quotes and build swap transactions. <a href="https://station.jup.ag/docs/v6/swap-api" target="_blank" rel="noopener noreferrer" class="link-accent">station.jup.ag/docs/v6/swap-api</a></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">⛓️</div>
+          <div>
+            <p class="step-title">On-chain program, verified live</p>
+            <p class="step-text">Jupiter Aggregator v6 — check the live account, its code, and every transaction that has ever touched it, directly on a public block explorer. <a href="https://solscan.io/account/JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4" target="_blank" rel="noopener noreferrer" class="link-accent">View on Solscan</a> · <a href="https://explorer.solana.com/address/JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4" target="_blank" rel="noopener noreferrer" class="link-accent">View on Solana Explorer</a></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">🧩</div>
+          <div>
+            <p class="step-title">Jupiter's open-source repositories</p>
+            <p class="step-text">SDKs, the swap plugin, and the instruction parser Jupiter itself uses — all public. <a href="https://github.com/jup-ag" target="_blank" rel="noopener noreferrer" class="link-accent">github.com/jup-ag</a></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-index">💻</div>
+          <div>
+            <p class="step-title">This site's own source code</p>
+            <p class="step-text">Swap Solana Tokens is a static, client-side front-end — no backend, no database, no hidden logic. <a href="https://github.com/SwapSolanaTokens/swapsolanatokens.com" target="_blank" rel="noopener noreferrer" class="link-accent">View the repository on GitHub</a></p>
+          </div>
+        </div>
+      </div>
+      <p class="tech-footnote">Program addresses and integrations can change as Jupiter ships new versions. Always confirm against the official links above rather than a screenshot or a cached copy of this page.</p>
+    </div>
+
+    <div class="panel legal-panel">
+      <p class="panel-eyebrow">📄 Legal disclaimer</p>
+      <h2>Use at your own discretion</h2>
+      <p>Swap Solana Tokens is an independent, non-custodial interface and is not affiliated with, endorsed by, or operated by Jupiter Exchange or deBridge. Swap functionality is provided entirely by Jupiter's public plugin and API; cross-chain bridge functionality is provided entirely by deBridge's public widget. Each protocol is responsible for its own infrastructure, fees and execution.</p>
+      <p>Cryptocurrency trading and cross-chain bridging involve substantial risk, including the risk of total loss. Token prices are volatile and shown for informational purposes only; nothing on this site is financial advice. You are solely responsible for verifying token addresses, contract addresses, transaction details and wallet approvals before confirming any swap or bridge transaction.</p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">
+      <img class="brand-icon" src="logo.png" alt="Swap Solana Tokens logo">
+      Swap Solana Tokens
+    </div>
+    <div class="footer-powered">
+      Powered by
+      <a href="https://jup.ag" target="_blank" rel="noopener noreferrer">
+        <img class="jupiter-logo-img" src="https://static.jup.ag/jup/icon.png" alt="Jupiter logo">
+        Jupiter
+      </a>
+      &amp;
+      <a href="https://debridge.com" target="_blank" rel="noopener noreferrer">
+        <img class="jupiter-logo-img" src="https://www.google.com/s2/favicons?sz=64&domain=debridge.com" alt="deBridge logo">
+        deBridge
+      </a>
+    </div>
+    <p class="footer-copy">Not affiliated with Jupiter Exchange or deBridge · Non-custodial · Use at your own risk</p>
+    <p class="footer-copy footer-contact-line">
+      © 2026 Swap Solana Tokens · Contact:
+      <a href="mailto:support@swapsolanatokens.com" class="footer-contact-email">support@swapsolanatokens.com</a>
+      <span class="footer-contact-sep">·</span>
+      <a class="social-link-inline" href="https://x.com/swapsolanasite" target="_blank" rel="noopener noreferrer" aria-label="Swap Solana Tokens on X">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+      </a>
+      <span class="footer-contact-sep">·</span>
+      <a class="social-link-inline" href="https://t.me/SwapSolanaTokens" target="_blank" rel="noopener noreferrer" aria-label="Swap Solana Tokens on Telegram">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M21.94 4.6 18.6 20.16c-.25 1.13-.9 1.4-1.83.87l-5.06-3.73-2.44 2.35c-.27.27-.5.5-1.02.5l.36-5.16 9.4-8.5c.41-.36-.09-.56-.63-.2L6.3 13.06l-5.02-1.57c-1.09-.34-1.11-1.09.23-1.61L20.6 3.32c.91-.33 1.71.22 1.34 1.28z"/>
+        </svg>
+      </a>
+    </p>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
