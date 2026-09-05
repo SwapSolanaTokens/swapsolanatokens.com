@@ -1,0 +1,55 @@
+# ============================================================
+# Swap Solana Tokens — DonWeb (Apache) config
+# Equivalente a vercel.json + forzado de HTTPS
+# ============================================================
+
+# --- Forzar HTTPS ---
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# --- Security headers (equivalentes a vercel.json) ---
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+
+  # Content-Security-Policy: aplicado únicamente acá (como header HTTP real),
+  # no vía <meta> en index.html. Esto es necesario porque frame-ancestors
+  # (protección anti-clickjacking moderna, evaluada por securityheaders.com /
+  # Mozilla Observatory) solo tiene efecto cuando el CSP viaja como header
+  # HTTP — el navegador lo ignora si viene de un <meta http-equiv>.
+  #
+  # IMPORTANTE: style-src usa 'unsafe-inline' a propósito, NO un hash SHA-256.
+  # El widget de Jupiter (plugin-v1.js) inyecta sus propios estilos en tiempo
+  # de ejecución (CSS-in-JS con contenido dinámico), imposible de fijar con
+  # un hash estático. Si en el futuro se agrega un hash acá, el navegador
+  # ignora 'unsafe-inline' en esa misma directiva y el widget se rompe
+  # visualmente. Esto ya pasó una vez — no repetir.
+  #
+  # https://cdn.mayan.finance está agregado a script-src para el widget de
+  # bridge cross-chain (Mayan), integración independiente de Jupiter. A
+  # diferencia de deBridge, el widget de Mayan se monta directo en el DOM
+  # de esta página (MayanSwap.init) en vez de un <iframe> cross-origin —
+  # por eso NO hace falta agregar nada a frame-src para este widget.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://plugin.jup.ag https://*.jup.ag https://cdn.mayan.finance; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src https://birdeye.so https://*.birdeye.so; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
+</IfModule>
+
+# --- Evitar que Apache liste el contenido de carpetas ---
+Options -Indexes
+
+# --- Evitar acceso directo a archivos de configuración/ocultos ---
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+
+# --- Cache básico para assets estáticos (logo, favicon) ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/x-icon "access plus 30 days"
+</IfModule>
