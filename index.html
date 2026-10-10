@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swap Solana Tokens | Solana DEX Swap & Cross-Chain Bridge</title>
+  <meta name="description" content="Swap SPL tokens on Solana at the best price via Jupiter, or bridge in from Ethereum, BNB Chain and Polygon with Mayan. Non-custodial, no sign-up.">
+  <!-- Link preview (Open Graph / X card). X falls back to the og: tags for
+       title, description and image, so only the card type and the site
+       handle need twitter: tags. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Swap Solana Tokens">
+  <meta property="og:title" content="Swap Solana Tokens | Solana DEX Swap &amp; Cross-Chain Bridge">
+  <meta property="og:description" content="Swap SPL tokens on Solana at the best price via Jupiter, or bridge in from Ethereum, BNB Chain and Polygon with Mayan. Non-custodial, no sign-up.">
+  <meta property="og:url" content="https://swapsolanatokens.com/">
+  <meta property="og:image" content="https://swapsolanatokens.com/logo.png">
+  <meta property="og:image:alt" content="Swap Solana Tokens logo">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@swapsolanasite">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="canonical" href="https://swapsolanatokens.com/">
+  <!-- PWA manifest: controls the "Add to Home Screen" icon and splash
+       screen (dark background + high-res icon instead of the browser's
+       default white background + low-res favicon). -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0d0b1e">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Swap Solana Tokens">
+  <!-- Structured data (JSON-LD). A data block, not executable code, so it
+       is not affected by the CSP script-src directive. The FAQPage block
+       now lives in how-it-works.html, next to the visible FAQ. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "@id": "https://swapsolanatokens.com/#app",
+        "name": "Swap Solana Tokens",
+        "url": "https://swapsolanatokens.com/",
+        "description": "Swap SPL tokens on Solana at the best price via Jupiter, or bridge in from Ethereum, BNB Chain and Polygon with Mayan. Non-custodial, no sign-up.",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript and a Solana or EVM wallet",
+        "inLanguage": "en",
+        "image": "https://swapsolanatokens.com/logo.png",
+        "sameAs": [
+          "https://x.com/swapsolanasite",
+          "https://t.me/SwapSolanaTokens",
+          "https://github.com/SwapSolanaTokens/swapsolanatokens.com"
+        ]
+      }
+    ]
+  }
+  </script>
+  <!-- Content-Security-Policy is enforced via a real HTTP response header
+       (see vercel.json / .htaccess), not a <meta> tag. frame-ancestors only
+       takes effect from an HTTP header, so this had to move out of the HTML. -->
+  <script src="https://plugin.jup.ag/plugin-v1.js" data-preload defer></script>
+  <!-- Mayan widget: separate, independent integration for cross-chain
+       swaps. Not affiliated with the Jupiter plugin above. Unlike the
+       previous deBridge integration, Mayan mounts directly into a DOM
+       element on THIS page (via MayanSwap.init in app.js) instead of a
+       cross-origin <iframe> — no onload="" attribute here on purpose,
+       since an inline event handler would need 'unsafe-inline' in CSP
+       script-src; init is triggered from app.js's window.onload instead,
+       same pattern already used for the Jupiter plugin above. -->
+  <script src="https://cdn.mayan.finance/widget/1_8_0/main.js"
+    integrity="sha256-csokBs9wUf3aZCKTR7/XXElwXugjzCQeUygLmN+/Y7Y="
+    crossorigin="anonymous" defer></script>
+  <!-- Top navigation + footer, shared with how-it-works.html and the guide. -->
+  <link rel="stylesheet" href="shared.css?v=1">
+  <style>
+    :root {
+      --jupiter-plugin-primary: 199, 242, 132;
+      --jupiter-plugin-background: 13, 11, 30;
+      --jupiter-plugin-primaryText: 232, 249, 255;
+      --jupiter-plugin-warning: 251, 191, 36;
+      --jupiter-plugin-interactive: 42, 36, 68;
+      --jupiter-plugin-module: 20, 16, 40;
+    }
+    html { scroll-behavior: smooth; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      background: #0d0b1e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #e8f9ff;
+      padding: 24px;
+    }
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+    .brand-icon-top {
+      width: 48px;
+      height: 48px;
+    }
+    h1 {
+      font-size: 38.5px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.02em;
+      color: #c7f284;
+      text-align: center;
+    }
+    #jupiter-plugin {
+      width: 100%;
+      max-width: 480px;
+      height: 680px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    /* On mobile, the wallet picker (Phantom, Jupiter, etc.) renders as a
+       panel inside this container. With overflow:hidden that panel gets
+       clipped and nothing shows up when tapping "Connect". */
+    @media (max-width: 640px) {
+      #jupiter-plugin {
+        overflow: visible;
+      }
+    }
+    /* ---- Mobile wallet connect CTA (shown only via JS: mobile UA + no injected wallet) ---- */
+    .mobile-wallet-cta {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+    }
+    .mobile-wallet-cta.visible {
+      display: flex;
+    }
+    /* Subtle divider so the CTA card doesn't feel glued to the Jupiter
+       widget label right below it. Only applies when the CTA is actually
+       shown (mobile), so desktop layout is untouched. */
+    .mobile-wallet-cta.visible + .swap-col-label {
+      margin-top: 4px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .mobile-wallet-cta-text {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(232, 249, 255, 0.55);
+      text-align: center;
+    }
+    .mobile-wallet-cta-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .wallet-cta-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      padding: 9px 16px;
+      text-decoration: none;
+      color: #e8f9ff;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .wallet-cta-btn:hover {
+      background: rgba(199, 242, 132, 0.1);
+      border-color: rgba(199, 242, 132, 0.4);
+    }
+    .wallet-cta-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      object-fit: cover;
+      background: #fff;
+    }
+
+    /* ---- Top block: logo + title centered on top; below it the Swap /
+       Bridge tabs (left) and the token search (right), side by side and
+       centered as a pair ----
+       Both gaps are 48px: the one between title and tabs/search, and the
+       one between tabs/search and the panels below (24px body gap + 24px
+       margin-bottom here). The gap between tabs and search is 48px too.
+       On phones (640px and below) everything stacks: logo above title,
+       then search, then tabs. */
+    .controls-row {
+      width: 100%;
+      margin-top: 28px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: auto auto;
+      justify-content: center;
+      align-items: center;
+      column-gap: 48px;
+      row-gap: 48px;
+    }
+    /* Logo centered above the title. */
+    .brand {
+      grid-column: 1 / -1;
+      justify-self: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    @media (max-width: 640px) {
+      .controls-row {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: 14px;
+      }
+      .tab-switch { justify-self: center; }
+    }
+
+    /* ---- Token search ----
+       252px wide. The results list is wider than the box (see
+       .search-results) and opens toward the left. */
+    .search-wrap {
+      width: 252px;
+      min-width: 0;
+    }
+    @media (max-width: 640px) {
+      .search-wrap {
+        width: 100%;
+        justify-self: stretch;
+      }
+    }
+    .search-field {
+      position: relative;
+      width: 100%;
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 50px;
+      padding: 0 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .search-box:focus-within {
+      border-color: rgba(199, 242, 132, 0.6);
+      box-shadow: 0 0 0 3px rgba(199, 242, 132, 0.12);
+    }
+    .search-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: rgba(232, 249, 255, 0.5);
+    }
+    .search-input {
+      flex: 1;
+      min-width: 0;
+      appearance: none;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #e8f9ff;
+      font-family: inherit;
+      font-size: 16px; /* 16px keeps iOS Safari from zooming on focus */
+    }
+    .search-input::placeholder {
+      color: rgba(232, 249, 255, 0.4);
+    }
+    .search-results {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: min(520px, calc(100vw - 48px));
+      z-index: 60;
+      list-style: none;
+      margin: 0;
+      padding: 6px;
+      max-height: min(460px, 60vh);
+      overflow-y: auto;
+      background: #14102a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+    }
+    .search-results[hidden] { display: none; }
+    @media (max-width: 640px) {
+      /* Phones: the search box is full width, so the list matches it. */
+      .search-results {
+        left: 0;
+        width: auto;
+      }
+    }
+    /* Each result row: the "load this token" button, plus a separate
+       copy-mint button on its right (a button can't sit inside a button). */
+    .search-results li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+      border-radius: 10px;
+    }
+    .search-results li:hover {
+      background: rgba(199, 242, 132, 0.08);
+    }
+    .search-item {
+      width: 100%;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 10px;
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      color: inherit;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .search-item:focus-visible {
+      background: rgba(199, 242, 132, 0.08);
+      outline: none;
+    }
+    .search-copy {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 112px;
+      margin-right: 8px;
+      padding: 5px 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      color: rgba(232, 249, 255, 0.75);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .search-copy:hover,
+    .search-copy:focus-visible {
+      color: #c7f284;
+      background: rgba(199, 242, 132, 0.1);
+      border-color: rgba(199, 242, 132, 0.45);
+      outline: none;
+    }
+    .search-copy.copied {
+      color: #7ee787;
+      background: rgba(126, 231, 135, 0.1);
+      border-color: rgba(126, 231, 135, 0.5);
+    }
+    .search-copy svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+    /* Off-screen helper used only by the clipboard fallback in app.js. */
+    .copy-fallback {
+      position: fixed;
+      top: 0;
+      left: -9999px;
+      opacity: 0;
+    }
+    .search-token-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      display: block;
+    }
+    .search-token-fallback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #c7f284;
+      background: linear-gradient(135deg, rgba(199, 242, 132, 0.18), rgba(155, 140, 255, 0.18));
+      border: 1px solid rgba(199, 242, 132, 0.3);
+    }
+    .search-main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .search-line {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+    .search-symbol {
+      font-weight: 700;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    .search-name {
+      font-size: 13px;
+      color: rgba(232, 249, 255, 0.5);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .search-meta {
+      font-size: 12.5px;
+      color: rgba(232, 249, 255, 0.5);
+      font-variant-numeric: tabular-nums;
+    }
+    .search-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 3px;
+    }
+    .search-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 999px;
+      padding: 1px 7px;
+    }
+    .search-tag.neutral {
+      color: rgba(232, 249, 255, 0.6);
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .search-badge {
+      font-size: 11.5px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 3px 9px;
+      white-space: nowrap;
+    }
+    .search-badge.verified {
+      color: #7ee787;
+      background: rgba(126, 231, 135, 0.1);
+      border: 1px solid rgba(126, 231, 135, 0.35);
+    }
+    .search-badge.unverified {
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+    }
+    /* Sits under the controls row (not inside it) so a long notice never
+       changes the height of the row and shifts the tabs. */
+    .search-notice {
+      width: 100%;
+      max-width: 680px;
+      margin: -6px 0 0 0;
+      padding: 0 8px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      text-align: center;
+      color: rgba(232, 249, 255, 0.55);
+    }
+    .search-notice:empty { display: none; }
+    .search-notice.warn { color: #fbbf24; }
+    @media (max-width: 560px) {
+      /* On narrow screens the badge drops under the token info so the
+         name column keeps room, and the copy button drops under the row,
+         lined up with the token name (10px padding + 32px icon + 12px gap). */
+      .search-item {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+      .search-badge {
+        grid-column: 2;
+        justify-self: start;
+      }
+      .search-results li {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+      }
+      .search-copy {
+        justify-self: start;
+        margin: 0 0 8px 54px;
+      }
+    }
+
+    /* ---- Blur layer shown while the search results are open ----
+       app.js adds body.search-open when results are visible. The backdrop
+       blurs and dims everything behind it (including the swap, the chart
+       and the nav); the search box is lifted above it with z-index 120.
+       cursor: pointer makes iOS Safari treat it as clickable. */
+    .search-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 110;
+      background: rgba(13, 11, 30, 0.4);
+      -webkit-backdrop-filter: blur(6px);
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      cursor: pointer;
+      transition: opacity 0.18s ease, visibility 0.18s ease;
+    }
+    body.search-open .search-backdrop {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    body.search-open .search-wrap {
+      position: relative;
+      z-index: 120;
+    }
+
+    .swap-area {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 20px;
+      width: 100%;
+      margin-bottom: 40px;
+    }
+    .swap-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .swap-col-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 4px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #e8f9ff;
+    }
+    .swap-col-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #7ee787;
+      flex-shrink: 0;
+    }
+    .swap-col-sub {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: rgba(232, 249, 255, 0.4);
+    }
+    .bridge-wrap {
+      width: 100%;
+      max-width: 480px;
+      min-height: 740px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    @media (max-width: 640px) {
+      .bridge-wrap {
+        overflow: visible;
+      }
+    }
+    /* Loading / retry state shown inside #mayan-widget while
+       initMayan() is (re)trying, or after it gives up — see app.js */
+    .bridge-status {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 300px;
+      gap: 14px;
+      padding: 24px;
+      text-align: center;
+    }
+    .bridge-status-text {
+      margin: 0;
+      font-size: 13.5px;
+      color: rgba(232, 249, 255, 0.5);
+      line-height: 1.5;
+    }
+    .chart-panel {
+      width: 100%;
+      max-width: 680px;
+      margin-top: -8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 4px;
+      flex-wrap: wrap;
+    }
+    .chart-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .chart-live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #7ee787;
+      box-shadow: 0 0 0 3px rgba(126, 231, 135, 0.18);
+      flex-shrink: 0;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .chart-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #e8f9ff;
+      letter-spacing: -0.01em;
+    }
+    .chart-title-sub {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(232, 249, 255, 0.4);
+    }
+    .chart-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .interval-switch {
+      display: flex;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .interval-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: rgba(232, 249, 255, 0.5);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .interval-btn:hover {
+      color: rgba(232, 249, 255, 0.8);
+    }
+    .interval-btn.active {
+      background: linear-gradient(135deg, #c7f284, #9b8cff);
+      color: #0d0b1e;
+    }
+    .chart-badge {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(232, 249, 255, 0.4);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+    .chart-explainer {
+      margin: 0;
+      padding: 0 4px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: rgba(232, 249, 255, 0.45);
+    }
+    .chart-frame-wrap {
+      width: 100%;
+      height: 420px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #0c0a1a;
+      position: relative;
+    }
+    .chart-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .chart-frame.loaded {
+      opacity: 1;
+    }
+    .chart-frame-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13.5px;
+      color: rgba(232, 249, 255, 0.35);
+      pointer-events: none;
+    }
+    @media (max-width: 480px) {
+      .chart-frame-wrap {
+        height: max(480px, 58vh);
+      }
+      .chart-header {
+        justify-content: center;
+        text-align: center;
+      }
+      .chart-controls {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    /* ---- Tabs: Swap (Jupiter + chart) / Bridge (Mayan) ----
+       The Swap / Bridge buttons live in .controls-row (next to the search
+       box); .tabs-area below only holds the two panels. */
+    .tabs-area {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 40px;
+    }
+    .tab-switch {
+      flex: 0 0 auto;
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      background: rgba(155, 140, 255, 0.14);
+      border: 1px solid rgba(199, 242, 132, 0.5);
+      border-radius: 999px;
+      box-shadow: 0 0 24px rgba(155, 140, 255, 0.3), 0 0 0 3px rgba(199, 242, 132, 0.06);
+    }
+    .tab-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: #c7f284;
+      font-family: inherit;
+      font-size: 19px;
+      font-weight: 700;
+      padding: 10px 30px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .tab-btn:hover {
+      background: rgba(199, 242, 132, 0.12);
+      color: #e3ffb3;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #d4ff7a, #8f7bff);
+      color: #0d0b1e;
+      box-shadow: 0 4px 18px rgba(155, 140, 255, 0.55);
+    }
+    .tab-btn-sub {
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0.6;
+    }
+    /* Phones and narrow windows: swap on top, chart below it, Top movers
+       below the chart (DOM order). */
+    .tab-panel {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .tab-panel[hidden] { display: none; }
+    .tab-panel .swap-col { flex: 0 1 480px; }
+    .tab-panel .chart-panel { flex: 1 1 520px; margin-top: 0; }
+    .tab-panel .movers-panel { flex: 0 1 480px; }
+    .mobile-wallet-cta { margin-bottom: 4px; }
+
+    /* ---- Wide-desktop layout: chart | swap | top movers ----
+       Only from 1360px up. Between 641px and 1359px the Swap tab shows the
+       swap with Top movers below it (see the mid-width block below); on
+       phones (640px and below) it stacks swap, chart and Top movers.
+
+       Two knobs control this layout (both on #panel-swap below):
+         --swap-scale  how much bigger the Jupiter swap is drawn (1 = original
+                       480px). It is a pure CSS scale of the container: the
+                       widget's own code, the CSP and the signing flow are
+                       untouched.
+         --side-h      height of the chart and the top-movers panels.
+       The side panels sit at the far left and right of the row
+       (space-between); the swap stays centered between them. */
+    @media (min-width: 1360px) {
+      .tabs-area { max-width: 1760px; }
+      #panel-swap {
+        --swap-scale: 1.4;
+        --side-h: 580px;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        gap: 32px;
+        align-items: flex-start;
+      }
+      #panel-swap .swap-col {
+        order: 2;
+        align-self: flex-start;
+        flex: 0 0 calc(480px * var(--swap-scale));
+        width: calc(480px * var(--swap-scale));
+        max-width: none;
+      }
+      /* The container keeps its native 480x680 size and is scaled from its
+         top-left corner; the extra bottom margin reserves the added height
+         so nothing below overlaps the enlarged swap. */
+      #panel-swap #jupiter-plugin {
+        width: 480px;
+        transform: scale(var(--swap-scale));
+        transform-origin: top left;
+        margin-bottom: calc(680px * (var(--swap-scale) - 1));
+      }
+      #panel-swap .chart-panel { order: 1; flex: 0 0 360px; max-width: 360px; height: var(--side-h); min-height: 0; margin-top: 0; }
+      #panel-swap .movers-panel { order: 3; flex: 0 0 360px; max-width: 360px; height: var(--side-h); display: flex; overflow-y: auto; }
+      #panel-swap .chart-explainer { display: none; }
+      #panel-swap .chart-header { justify-content: center; text-align: center; }
+      /* The chart fills whatever height the panel has. */
+      #panel-swap .chart-frame-wrap { height: auto; flex: 1 1 auto; min-height: 360px; }
+      #panel-swap .chart-frame { position: absolute; inset: 0; }
+      /* Movers: compact rows so ten of them plus the note fit in --side-h */
+      #panel-swap .movers-panel { gap: 6px; padding: 14px; }
+      #panel-swap .movers-view { gap: 6px; flex: 1 1 auto; }
+      #panel-swap .mover-row { padding: 4px 10px; }
+      #panel-swap .mover-icon { width: 26px; height: 26px; }
+      #panel-swap .mover-main { line-height: 1.15; }
+      #panel-swap .movers-list { gap: 3px; }
+      #panel-swap .movers-note { font-size: 11.5px; line-height: 1.4; margin-top: auto; }
+    }
+
+    /* ---- Mid-width layout: swap, then Top movers below it ----
+       From 641px to 1359px (e.g. the window shrinks because a wallet
+       extension opens next to it) the chart is hidden and the swap is shown
+       at the same enlarged size as in the wide layout, so it keeps the
+       spotlight. Top movers sits right below it at the same width. Same
+       scaling technique as above. 1.4 needs about 720px of viewport (672px
+       swap + 48px page padding); between 641px and 720px it drops to 1.2 so
+       it never overflows. Phones (640px and below) are untouched. */
+    @media (min-width: 641px) and (max-width: 1359px) {
+      #panel-swap { --swap-scale: 1.4; }
+      #panel-swap .swap-col {
+        flex: 0 0 calc(480px * var(--swap-scale));
+        width: calc(480px * var(--swap-scale));
+        max-width: none;
+      }
+      #panel-swap #jupiter-plugin {
+        width: 480px;
+        transform: scale(var(--swap-scale));
+        transform-origin: top left;
+        margin-bottom: calc(680px * (var(--swap-scale) - 1));
+      }
+      #panel-swap .chart-panel { display: none; }
+      #panel-swap .movers-panel {
+        flex: 0 0 calc(480px * var(--swap-scale));
+        width: calc(480px * var(--swap-scale));
+        max-width: none;
+      }
+    }
+    @media (min-width: 641px) and (max-width: 720px) {
+      #panel-swap { --swap-scale: 1.2; }
+    }
+
+    /* ---- Top movers panel ---- */
+    .movers-panel {
+      width: 100%;
+      display: flex;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px;
+      flex-direction: column;
+      gap: 12px;
+    }
+    /* Trending / Top volume switch. Reuses the .interval-switch look from
+       the chart; centered under the panel title. */
+    .movers-tabs {
+      align-self: center;
+    }
+    /* One view per tab. Both stay in the DOM; the inactive one is hidden. */
+    .movers-view {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .movers-view[hidden] { display: none; }
+    .movers-group-label {
+      margin: 4px 0 0 0;
+      padding: 0 4px;
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .movers-group-label.up { color: #7ee787; }
+    .movers-group-label.down { color: #ff7b72; }
+    .movers-group-label.volume { color: #9b8cff; }
+    .movers-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    /* The whole row is one button: tapping anywhere on it loads the token
+       into the swap. */
+    .mover-row {
+      appearance: none;
+      width: 100%;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      color: inherit;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .mover-row:hover,
+    .mover-row:focus-visible {
+      background: rgba(199, 242, 132, 0.08);
+      border-color: rgba(199, 242, 132, 0.4);
+      outline: none;
+    }
+    .mover-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      display: block;
+    }
+    .mover-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      line-height: 1.25;
+    }
+    .mover-symbol {
+      font-weight: 700;
+      font-size: 14.5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .mover-price {
+      font-size: 12.5px;
+      color: rgba(232, 249, 255, 0.5);
+      font-variant-numeric: tabular-nums;
+    }
+    .mover-change {
+      font-size: 13.5px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .mover-change.up { color: #7ee787; }
+    .mover-change.down { color: #ff7b72; }
+    .mover-change.neutral { color: #e8f9ff; }
+    .movers-status,
+    .movers-note {
+      margin: 0;
+      padding: 0 4px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: rgba(232, 249, 255, 0.45);
+    }
+    .movers-status:empty { display: none; }
+
+    /* ---- Page-level nav tweaks (the nav itself lives in shared.css) ---- */
+    @media (max-width: 640px) {
+      body {
+        padding-bottom: 76px;
+      }
+      .nav-anchor {
+        scroll-margin-top: 0;
+      }
+    }
+
+    /* Offset para compensar el navbar sticky al navegar por anclas (desktop) */
+    .nav-anchor {
+      scroll-margin-top: 68px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav" aria-label="Site navigation">
+    <div class="topnav-inner">
+      <a class="topnav-link" href="#swap-section">
+        <svg class="topnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 3l4 4-4 4"/><path d="M21 7H9a4 4 0 0 0-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h12a4 4 0 0 0 4-4v-1"/>
+        </svg>
+        Swap
+      </a>
+      <a class="topnav-link" href="#bridge-section">
+        <svg class="topnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 18h20"/><path d="M4 18v-4a8 8 0 0 1 16 0v4"/><path d="M8 18v-3"/><path d="M12 18v-4"/><path d="M16 18v-3"/>
+        </svg>
+        Bridge
+      </a>
+      <a class="topnav-link" href="#chart-section">
+        <svg class="topnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="4"/><line x1="16" y1="20" x2="16" y2="9"/><line x1="2" y1="20" x2="22" y2="20"/>
+        </svg>
+        Chart
+      </a>
+      <a class="topnav-link" href="how-it-works.html">
+        <svg class="topnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        How it works
+      </a>
+      <a class="topnav-link" href="how-it-works.html#contact-section">
+        <svg class="topnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/>
+        </svg>
+        Contact
+      </a>
+    </div>
+  </nav>
+
+  <!-- Blurs and dims the page while the token search results are open.
+       Shown by CSS when app.js adds body.search-open; clicking it closes
+       the results (handled in app.js). -->
+  <div class="search-backdrop" id="search-backdrop" aria-hidden="true"></div>
+
+  <!-- Top row, one line: logo + title on the left, Swap / Bridge tabs in
+       the center, token search on the right. Search results are built by
+       app.js with textContent only. The notice sits right below the row. -->
+  <div class="controls-row">
+    <div class="brand">
+      <img class="brand-icon brand-icon-top" src="logo.png" alt="Swap Solana Tokens logo">
+      <h1>Swap Solana Tokens</h1>
+    </div>
+
+    <div class="tab-switch" role="tablist" aria-label="Swap or bridge">
+      <button type="button" class="tab-btn active" id="tab-swap" role="tab" aria-selected="true" aria-controls="panel-swap" data-tab="swap">Swap</button>
+      <button type="button" class="tab-btn" id="tab-bridge" role="tab" aria-selected="false" aria-controls="panel-bridge" data-tab="bridge" tabindex="-1">Bridge</button>
+    </div>
+
+    <div class="search-wrap" id="search-wrap">
+      <div class="search-field">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
+          </svg>
+          <input class="search-input" id="token-search" type="search" placeholder="Search token or mint" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search a Solana token by name, symbol or mint address" aria-controls="search-results">
+        </div>
+        <ul class="search-results" id="search-results" aria-label="Token search results" hidden></ul>
+      </div>
+    </div>
+  </div>
+  <p class="search-notice" id="search-notice" role="status"></p>
+
+  <div class="tabs-area" id="tabs-area">
+    <div class="tab-panel" id="panel-swap" role="tabpanel" aria-labelledby="tab-swap">
+      <div class="swap-col nav-anchor" id="swap-section">
+      <div class="mobile-wallet-cta" id="mobile-wallet-cta">
+        <p class="mobile-wallet-cta-text">Connect your wallet by opening the swap in:</p>
+        <div class="mobile-wallet-cta-buttons">
+          <a class="wallet-cta-btn" id="wallet-btn-phantom" href="https://phantom.app" target="_blank" rel="noopener noreferrer">
+            <img class="wallet-cta-icon" src="https://www.google.com/s2/favicons?sz=64&domain=phantom.app" alt="Phantom">
+            Phantom
+          </a>
+          <a class="wallet-cta-btn" id="wallet-btn-solflare" href="https://solflare.com" target="_blank" rel="noopener noreferrer">
+            <img class="wallet-cta-icon" src="https://www.google.com/s2/favicons?sz=64&domain=solflare.com" alt="Solflare">
+            Solflare
+          </a>
+          <a class="wallet-cta-btn" id="wallet-btn-backpack" href="https://backpack.app" target="_blank" rel="noopener noreferrer">
+            <img class="wallet-cta-icon" src="https://www.google.com/s2/favicons?sz=64&domain=backpack.app" alt="Backpack">
+            Backpack
+          </a>
+        </div>
+      </div>
+        <div id="jupiter-plugin"></div>
+      </div>
+    <div class="chart-panel nav-anchor" id="chart-section">
+      <div class="chart-header">
+        <div class="chart-title-group">
+          <span class="chart-live-dot" aria-hidden="true"></span>
+          <span class="chart-title" id="chart-title">SOL</span>
+        </div>
+        <div class="chart-controls">
+          <div class="interval-switch" id="interval-switch" role="group" aria-label="Chart timeframe">
+            <button type="button" class="interval-btn" data-interval="15">15m</button>
+            <button type="button" class="interval-btn active" data-interval="60">1H</button>
+            <button type="button" class="interval-btn" data-interval="240">4H</button>
+            <button type="button" class="interval-btn" data-interval="1D">1D</button>
+          </div>
+        </div>
+      </div>
+      <p class="chart-explainer">This chart tracks the token in the Jupiter swap panel next to it. Search a token above, tap one in Top movers, or pick one inside the swap widget, and the candles switch automatically — powered by live pricing from Birdeye. Use 15m / 1H / 4H / 1D to change the timeframe.</p>
+      <div class="chart-frame-wrap">
+        <span class="chart-frame-loading" id="chart-loading">Loading chart…</span>
+        <iframe
+          id="price-chart"
+          class="chart-frame"
+          title="Price chart"
+          frameborder="0"
+          loading="lazy"
+          sandbox="allow-scripts allow-same-origin allow-popups"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allow=""
+        ></iframe>
+      </div>
+    </div>
+
+    <div class="movers-panel" id="movers-section">
+      <div class="chart-header">
+        <div class="chart-title-group">
+          <span class="chart-live-dot" aria-hidden="true"></span>
+          <span class="chart-title">Top movers</span>
+          <span class="chart-title-sub">24h</span>
+        </div>
+      </div>
+      <!-- Two views of the same Jupiter response: Trending (gainers and
+           losers by price change) and Top volume (the 10 most traded
+           tokens). Tab switching is handled in app.js. -->
+      <div class="interval-switch movers-tabs" id="movers-tabs" role="tablist" aria-label="Top movers view">
+        <button type="button" class="interval-btn active" role="tab" aria-selected="true" aria-controls="movers-view-trending" data-mview="trending">Trending</button>
+        <button type="button" class="interval-btn" role="tab" aria-selected="false" aria-controls="movers-view-volume" data-mview="volume">Top volume</button>
+      </div>
+
+      <div class="movers-view" id="movers-view-trending" role="tabpanel">
+        <p class="movers-status" id="movers-status" role="status">Loading rankings…</p>
+        <p class="movers-group-label up">▲ Top gainers</p>
+        <ol class="movers-list" id="movers-gainers"></ol>
+        <p class="movers-group-label down">▼ Top losers</p>
+        <ol class="movers-list" id="movers-losers"></ol>
+        <p class="movers-note">Picked from the 50 most-traded Solana tokens with over $1M of liquidity, no mint authority and a Jupiter-verified listing. Tap any token to load it in the swap. Informational only, not financial advice.</p>
+      </div>
+
+      <div class="movers-view" id="movers-view-volume" role="tabpanel" hidden>
+        <p class="movers-status" id="volume-status" role="status">Loading rankings…</p>
+        <p class="movers-group-label volume">● Most traded · 24h volume</p>
+        <ol class="movers-list" id="movers-volume"></ol>
+        <p class="movers-note">The 10 Solana tokens with the most traded volume in the last 24 hours (buys plus sells), among Jupiter-verified tokens with over $1M of liquidity. SOL and stablecoins are included. Tap any token to load it in the swap. Informational only, not financial advice.</p>
+      </div>
+    </div>
+    </div>
+
+    <div class="tab-panel" id="panel-bridge" role="tabpanel" aria-labelledby="tab-bridge" hidden>
+      <div class="swap-col nav-anchor" id="bridge-section">
+        <div class="bridge-wrap" id="mayan-widget"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer: identical on index.html, how-it-works.html and
+       swap-and-bridge-guide.html (styles in shared.css). -->
+  <footer>
+    <div class="footer-brand">
+      <img class="brand-icon" src="logo.png" alt="Swap Solana Tokens logo">
+      Swap Solana Tokens
+    </div>
+    <div class="footer-powered">
+      Powered by
+      <a href="https://jup.ag" target="_blank" rel="noopener noreferrer">
+        <img class="jupiter-logo-img" src="https://static.jup.ag/jup/icon.png" alt="Jupiter logo">
+        Jupiter
+      </a>
+      &amp;
+      <a href="https://mayan.finance" target="_blank" rel="noopener noreferrer">
+        <img class="jupiter-logo-img" src="https://www.google.com/s2/favicons?sz=64&domain=mayan.finance" alt="Mayan logo">
+        Mayan
+      </a>
+    </div>
+    <p class="footer-copy"><a href="how-it-works.html" class="footer-contact-email">How it works</a> · <a href="swap-and-bridge-guide.html" class="footer-contact-email">Solana swap &amp; bridge guide</a></p>
+    <p class="footer-copy">Not affiliated with Jupiter Exchange or Mayan · Non-custodial · Use at your own risk</p>
+    <p class="footer-copy footer-contact-line">
+      © 2026 Swap Solana Tokens · Contact:
+      <a href="mailto:support@swapsolanatokens.com" class="footer-contact-email">support@swapsolanatokens.com</a>
+      <span class="footer-contact-sep">·</span>
+      <a class="social-link-inline" href="https://x.com/swapsolanasite" target="_blank" rel="noopener noreferrer" aria-label="Swap Solana Tokens on X">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+      </a>
+      <span class="footer-contact-sep">·</span>
+      <a class="social-link-inline" href="https://t.me/SwapSolanaTokens" target="_blank" rel="noopener noreferrer" aria-label="Swap Solana Tokens on Telegram">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M21.94 4.6 18.6 20.16c-.25 1.13-.9 1.4-1.83.87l-5.06-3.73-2.44 2.35c-.27.27-.5.5-1.02.5l.36-5.16 9.4-8.5c.41-.36-.09-.56-.63-.2L6.3 13.06l-5.02-1.57c-1.09-.34-1.11-1.09.23-1.61L20.6 3.32c.91-.33 1.71.22 1.34 1.28z"/>
+        </svg>
+      </a>
+    </p>
+  </footer>
+
+  <script src="app.js?v=13" defer></script>
+</body>
+</html>
