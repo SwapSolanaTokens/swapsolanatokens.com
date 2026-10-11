@@ -1,0 +1,68 @@
+# ============================================================
+# Swap Solana Tokens — DonWeb (Apache) config
+# Equivalent to vercel.json, plus HTTPS enforcement
+# ============================================================
+
+# --- Force HTTPS and canonicalize to swapsolanatokens.com (no www) ---
+# The redirect target is always the fixed canonical host. The Host header sent
+# by the client is never reflected into the Location header (that would be a
+# Host-header injection / open-redirect vector). With Cloudflare on Full
+# (strict) the origin connection is already HTTPS, so %{HTTPS} is "on" and
+# there is no redirect loop. The legacy swapsolana.site domain is redirected
+# by Cloudflare Page Rules before it reaches this server.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # 1) Any host other than the canonical one (www, bare IP, stray domains)
+  #    -> canonical host, always over HTTPS
+  RewriteCond %{HTTP_HOST} !^swapsolanatokens\.com$ [NC]
+  RewriteRule ^(.*)$ https://swapsolanatokens.com/$1 [L,R=301]
+
+  # 2) HTTP -> HTTPS on the canonical host
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://swapsolanatokens.com/$1 [L,R=301]
+</IfModule>
+
+# --- Security headers (equivalent to vercel.json) ---
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), accelerometer=(), gyroscope=(), magnetometer=(), midi=(), display-capture=()"
+  Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+
+  # Content-Security-Policy: applied only here (as a real HTTP header), not via
+  # a <meta> tag in index.html. This is required because frame-ancestors
+  # (modern anti-clickjacking protection, checked by securityheaders.com and
+  # Mozilla Observatory) only works when the CSP is sent as an HTTP header;
+  # browsers ignore it when it comes from <meta http-equiv>.
+  #
+  # IMPORTANT: style-src uses 'unsafe-inline' on purpose, NOT a SHA-256 hash.
+  # Jupiter's widget (plugin-v1.js) injects its own styles at runtime (CSS-in-JS
+  # with dynamic content), which cannot be pinned with a static hash. If a hash
+  # is ever added here, the browser ignores 'unsafe-inline' in that same
+  # directive and the widget breaks visually. This already happened once —
+  # do not repeat it.
+  #
+  # https://cdn.mayan.finance is in script-src for the cross-chain bridge
+  # widget (Mayan), an integration independent from Jupiter. Unlike deBridge,
+  # the Mayan widget mounts directly in this page's DOM (MayanSwap.init)
+  # instead of a cross-origin <iframe>, so nothing needs to be added to
+  # frame-src for it.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://plugin.jup.ag https://*.jup.ag https://cdn.mayan.finance; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src https://birdeye.so https://*.birdeye.so; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
+</IfModule>
+
+# --- Stop Apache from listing folder contents ---
+Options -Indexes
+
+# --- Block direct access to hidden/config files ---
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+
+# --- Basic caching for static assets (logo, favicon) ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/x-icon "access plus 30 days"
+</IfModule>
