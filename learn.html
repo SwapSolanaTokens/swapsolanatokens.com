@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solana Token Safety and Basics: How to Check a Token Before You Swap</title>
+  <meta name="description" content="Plain-English Solana safety guide: mint addresses, mint and freeze authority, liquidity, slippage, TVL, common scams and wallet hygiene. Check a token before you swap.">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Swap Solana Tokens">
+  <meta property="og:title" content="Solana Token Safety and Basics: How to Check a Token Before You Swap">
+  <meta property="og:description" content="Mint addresses, mint and freeze authority, liquidity, slippage, scams and wallet hygiene, explained in plain English.">
+  <meta property="og:url" content="https://swapsolanatokens.com/learn.html">
+  <meta property="og:image" content="https://swapsolanatokens.com/logo.png">
+  <meta property="og:image:alt" content="Swap Solana Tokens logo">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@swapsolanasite">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="canonical" href="https://swapsolanatokens.com/learn.html">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0d0b1e">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <!-- Structured data (JSON-LD). The FAQ text must match the visible FAQ. -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://swapsolanatokens.com/learn.html#article",
+      "headline": "Solana Token Safety and Basics: How to Check a Token Before You Swap",
+      "description": "Plain-English guide to Solana token safety: mint addresses, mint and freeze authority, liquidity, slippage, scams and wallet hygiene.",
+      "inLanguage": "en",
+      "image": "https://swapsolanatokens.com/logo.png",
+      "mainEntityOfPage": "https://swapsolanatokens.com/learn.html",
+      "dateModified": "2026-10-11",
+      "author": {
+        "@type": "Organization",
+        "name": "Swap Solana Tokens",
+        "url": "https://swapsolanatokens.com/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Swap Solana Tokens",
+        "url": "https://swapsolanatokens.com/"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://swapsolanatokens.com/learn.html#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is a mint address and why does it matter?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A mint address is the unique on-chain ID of a token on Solana. Names and tickers can be copied by anyone, so two different tokens can both be called the same thing. The mint address cannot be duplicated, so it is the only reliable way to be sure you are trading the token you mean."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does \"Verified by Jupiter\" mean a token is safe?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It means the token is on Jupiter's verified list, which is a useful filter but not a safety guarantee. Verified tokens can still lose value, and prices can fall sharply. Always check the mint address, liquidity and the token's own official channels."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are mint authority and freeze authority?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Mint authority is the power to create more supply of a token. Freeze authority is the power to freeze token accounts so they cannot move tokens. Many legitimate tokens have both disabled, and some have a reason to keep them, but an active authority means the issuer can change the rules after you buy, so it deserves a closer look."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is slippage and price impact?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Price impact is how much your own trade moves the market price, and it grows with trade size and thin liquidity. Slippage tolerance is the largest price change you accept between the quote and execution. If the price moves past it, the swap does not go through."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is TVL?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "TVL, or total value locked, is the value of assets deposited in a protocol. It is a rough measure of size and usage, not of safety. A protocol with a high TVL can still have bugs or be exploited."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does my wallet show a small SOL deposit when I receive a new token?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Solana stores each token you hold in its own token account, which needs a small refundable rent deposit, about 0.002 SOL. If you later close an empty token account, that deposit is returned to you."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What should I do if I think I signed something malicious?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Stop interacting with the site, move your remaining assets to a new wallet created from a fresh seed phrase, and revoke token approvals using a reputable tool. Never share your seed phrase with anyone offering help."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="shared.css?v=2">
+  <style>
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0d0b1e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #e8f9ff;
+      line-height: 1.6;
+    }
+    a { color: #c7f284; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      background: rgba(13, 11, 30, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .topbar-inner {
+      width: 100%;
+      max-width: 760px;
+      height: 52px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #c7f284;
+      text-decoration: none;
+    }
+    .brand img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+    .cta {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0d0b1e;
+      background: linear-gradient(135deg, #d4ff7a, #8f7bff);
+      padding: 7px 16px;
+      border-radius: 999px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    main {
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 40px 20px 24px;
+    }
+    h1 {
+      font-size: clamp(28px, 5vw, 38px);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin: 0 0 14px;
+      color: #c7f284;
+    }
+    .lead {
+      font-size: 17.5px;
+      color: rgba(232, 249, 255, 0.75);
+      margin: 0 0 26px;
+    }
+    .meta {
+      font-size: 13px;
+      color: rgba(232, 249, 255, 0.4);
+      margin: 0 0 22px;
+    }
+    .toc, .section {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 24px 26px;
+      margin-bottom: 18px;
+    }
+    .toc h2, .section h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+      color: #c7f284;
+      line-height: 1.3;
+    }
+    .toc h2 { font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: #e8f9ff; }
+    .toc ol { margin: 0; padding-left: 20px; }
+    .toc li { margin: 4px 0; font-size: 15.5px; }
+    .section h3 {
+      margin: 20px 0 6px;
+      font-size: 17px;
+      color: #e8f9ff;
+    }
+    .section p, .section li {
+      font-size: 16px;
+      color: rgba(232, 249, 255, 0.72);
+    }
+    .section p { margin: 0 0 12px; }
+    .section p:last-child { margin-bottom: 0; }
+    .section ul, .section ol { padding-left: 22px; margin: 0 0 12px; }
+    .section li { margin: 6px 0; }
+    .steps-list { list-style: none; padding: 0 !important; counter-reset: step; }
+    .steps-list li {
+      position: relative;
+      padding-left: 46px;
+      margin: 16px 0;
+      counter-increment: step;
+    }
+    .steps-list li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14.5px;
+      color: #c7f284;
+      background: linear-gradient(135deg, rgba(199, 242, 132, 0.18), rgba(155, 140, 255, 0.18));
+      border: 1px solid rgba(199, 242, 132, 0.3);
+    }
+    .steps-list strong { color: #e8f9ff; display: block; }
+    .callout {
+      margin: 14px 0 0;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(155, 140, 255, 0.08);
+      border: 1px solid rgba(155, 140, 255, 0.25);
+      font-size: 15px;
+      color: rgba(232, 249, 255, 0.75);
+    }
+    .callout strong { color: #e8f9ff; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+      margin: 8px 0 4px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      vertical-align: top;
+      color: rgba(232, 249, 255, 0.72);
+    }
+    th { color: #e8f9ff; font-weight: 700; }
+    .table-wrap { overflow-x: auto; }
+    details { border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    details:last-child { border-bottom: none; }
+    summary {
+      cursor: pointer;
+      padding: 14px 0;
+      font-weight: 600;
+      font-size: 16px;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #e8f9ff;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: #c7f284; font-size: 20px; }
+    details[open] summary::after { content: "\2212"; }
+    details p { margin: 0 0 14px; font-size: 15px; }
+    .cta-block {
+      text-align: center;
+      padding: 28px 24px;
+    }
+    .cta-block p { margin-bottom: 16px; }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .btn {
+      display: inline-block;
+      font-weight: 700;
+      font-size: 15.5px;
+      padding: 11px 26px;
+      border-radius: 999px;
+      text-decoration: none;
+      color: #0d0b1e;
+      background: linear-gradient(135deg, #d4ff7a, #8f7bff);
+    }
+    .btn.secondary {
+      color: #c7f284;
+      background: rgba(199, 242, 132, 0.08);
+      border: 1px solid rgba(199, 242, 132, 0.4);
+    }
+    .disclaimer {
+      font-size: 13.5px;
+      color: rgba(232, 249, 255, 0.4);
+      line-height: 1.55;
+    }
+    /* Footer: markup and styles are the same as on the other pages
+       (shared.css). This page's body is not a flex column, so only
+       side padding is added here. */
+    footer {
+      padding-left: 20px;
+      padding-right: 20px;
+      padding-bottom: 40px;
+    }
+    @media (max-width: 560px) {
+      main { padding-top: 28px; }
+      .toc, .section { padding: 20px 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">
+        <img src="logo.png" alt="Swap Solana Tokens logo">
+        Swap Solana Tokens
+      </a>
+      <a class="cta" href="/">Open the swap</a>
+    </div>
+  </header>
+
+  <main>
+    <h1>Solana Token Safety and Basics</h1>
+    <p class="meta">Updated October 2026 · About a 6 minute read</p>
+    <p class="lead">Most losses in crypto come from a few avoidable mistakes: trading the wrong token, signing something you did not read, or trusting a link you should not. This guide explains the basics of checking a Solana token before you swap it, in plain English.</p>
+
+    <nav class="toc" aria-label="Table of contents">
+      <h2>In this guide</h2>
+      <ol>
+        <li><a href="#addresses">Reading a token address</a></li>
+        <li><a href="#authorities">Mint and freeze authority</a></li>
+        <li><a href="#liquidity">Liquidity, price impact and slippage</a></li>
+        <li><a href="#rent">Token accounts and rent</a></li>
+        <li><a href="#verified">What "verified" does and does not mean</a></li>
+        <li><a href="#defi">Protocols, TVL and liquid staking</a></li>
+        <li><a href="#scams">Common scam patterns</a></li>
+        <li><a href="#wallet">Wallet hygiene</a></li>
+        <li><a href="#tools">Using this site's safety tools</a></li>
+        <li><a href="#glossary">Glossary</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ol>
+    </nav>
+
+    <section class="section" id="addresses">
+      <h2>Reading a token address</h2>
+ <p>Every token on Solana has a mint address: a long string of letters and numbers, usually 32 to 44 characters. It is the token's real identity. The name and ticker are just labels that anyone can reuse, which is why look-alike tokens exist.</p>
+      <ul>
+        <li>Get the mint address from the project's official website or verified social accounts, never from a reply, a direct message or a random group post.</li>
+        <li>Compare the full address, not only the first and last characters. Scammers create addresses that start and end the same way.</li>
+        <li>On this site, the shortened mint is always shown next to the symbol, and the Token Inspector under the chart has a copy button and links to block explorers.</li>
+      </ul>
+    </section>
+    <section class="section" id="authorities">
+      <h2>Mint and freeze authority</h2>
+ <p>Two settings on a token tell you how much control its issuer still has.</p>
+      <ul>
+        <li><strong>Mint authority</strong> can create more supply. If it is active, the issuer can dilute holders at any time.</li>
+        <li><strong>Freeze authority</strong> can freeze token accounts so tokens cannot be moved or sold. If it is active, the issuer can lock holders out.</li>
+      </ul>
+      <p>Some legitimate tokens keep one of these on purpose, for example regulated stablecoins. For a small or new token, an active authority is a reason to be careful. This site flags tokens with an active mint or freeze authority above the swap when it can read them.</p>
+      <p>Tokens created with the Token-2022 standard can add extra features, such as transfer fees. Read the token's details before you trade it.</p>
+    </section>
+    <section class="section" id="liquidity">
+      <h2>Liquidity, price impact and slippage</h2>
+ <p>Liquidity is how much value sits in the pools that traders swap against. With thin liquidity, even a small trade moves the price, and selling later can be hard.</p>
+      <ul>
+        <li><strong>Price impact</strong> is how far your trade moves the price. The swap widget shows it before you sign.</li>
+        <li><strong>Slippage tolerance</strong> is the largest price change you accept between the quote and execution.</li>
+        <li>A very high slippage setting makes failed swaps rarer but lets the final price drift far from the quote. Raise it deliberately, not by default.</li>
+      </ul>
+      <div class="callout"><strong>Rule of thumb:</strong> if the quote is far from the market price, or the price impact is large, stop and find out why before you continue.</div>
+    </section>
+    <section class="section" id="rent">
+      <h2>Token accounts and rent</h2>
+ <p>Solana keeps each token you hold in its own token account. Creating one requires a small refundable deposit of roughly 0.002 SOL. That is why your SOL balance can drop slightly the first time you receive a new token. If you close an empty token account later, the deposit comes back to you.</p>
+      <p>Always keep a little SOL in your wallet for network fees and these deposits.</p>
+    </section>
+    <section class="section" id="verified">
+      <h2>What "verified" does and does not mean</h2>
+ <p>A "Verified by Jupiter" badge means the token is on Jupiter's verified list. It helps you avoid obvious fakes, but it is not an audit and not a safety rating. Verified tokens can still fall to zero, and a token can be unverified simply because it is new.</p>
+      <p>The same goes for the category labels in the Top 100 table: they are matched on the ticker as a convenience and say nothing about safety.</p>
+    </section>
+    <section class="section" id="defi">
+      <h2>Protocols, TVL and liquid staking</h2>
+ <p>The Solana Protocols directory on the home page ranks protocols by TVL, the value deposited on Solana, using DeFiLlama's public data. TVL shows size and activity. It does not show whether the code is safe.</p>
+      <ul>
+        <li><strong>DEXs and aggregators</strong> let you swap tokens. Jupiter, which powers this site's swap, is an aggregator.</li>
+        <li><strong>Lending protocols</strong> let you deposit assets to earn interest or borrow against collateral, with liquidation risk if prices move.</li>
+        <li><strong>Liquid staking tokens (LSTs)</strong> represent staked SOL and keep earning staking rewards while you hold them. They add smart-contract risk on top of SOL itself.</li>
+      </ul>
+      <p>Before you deposit into any protocol, read its documentation, check for published audits, and start with an amount you can afford to lose.</p>
+    </section>
+    <section class="section" id="scams">
+      <h2>Common scam patterns</h2>
+ <ul>
+        <li><strong>Fake airdrops and "claim" sites.</strong> Anything that asks you to connect a wallet to claim free tokens is a red flag.</li>
+        <li><strong>Direct messages with links.</strong> Real projects and support teams do not message you first.</li>
+        <li><strong>Look-alike tokens and sites.</strong> Same name and logo, different mint address or domain.</li>
+        <li><strong>Unexpected signing prompts.</strong> If a transaction asks for permissions you do not understand, reject it.</li>
+        <li><strong>Pressure and promises.</strong> Guaranteed returns, countdown timers and "send X, get 2X" offers are scams.</li>
+        <li><strong>Anyone asking for your seed phrase.</strong> No legitimate service ever needs it.</li>
+      </ul>
+    </section>
+    <section class="section" id="wallet">
+      <h2>Wallet hygiene</h2>
+ <ul>
+        <li>Never share your seed phrase or private key, and never type it into a website.</li>
+        <li>Keep long-term savings in a separate wallet from the one you use to try new apps.</li>
+        <li>Read every approval your wallet shows before you sign it.</li>
+        <li>Bookmark the sites you use instead of following links from messages or ads.</li>
+        <li>Keep your wallet app and browser up to date.</li>
+      </ul>
+      <p>This site is non-custodial: it has no accounts, no backend and no access to your keys. Every transaction is signed in your own wallet.</p>
+    </section>
+    <section class="section" id="tools">
+      <h2>Using this site's safety tools</h2>
+ <ol class="steps-list">
+        <li><strong>Load the token</strong>Search by name or paste the mint address in the search box on the <a href="/">home page</a>. Check the warnings shown above the swap.</li>
+        <li><strong>Open the Token Inspector</strong>Under the chart you will find the mint address, a copy button and links to RugCheck, Solscan and DexScreener.</li>
+        <li><strong>Run a RugCheck audit</strong>Paste any mint address into the RugCheck Quick Audit card to open its report.</li>
+        <li><strong>Save it to My tokens</strong>Tap the star on a token to keep it in your watchlist. The list is stored only in your browser and is never sent to any server.</li>
+        <li><strong>Review the quote</strong>Check the output amount, price impact and slippage in the swap widget before you confirm in your wallet.</li>
+      </ol>
+      <p>For more on swapping and bridging, read the <a href="swap-and-bridge-guide.html">Solana swap and bridge guide</a>, or see <a href="how-it-works.html">how this site works</a>.</p>
+    </section>
+    <section class="section" id="glossary">
+      <h2>Glossary</h2>
+ <div class="table-wrap"><table>
+        <tbody>
+          <tr><th scope="row">SPL token</th><td>A token on Solana, the equivalent of an ERC-20 token on Ethereum.</td></tr>
+          <tr><th scope="row">Mint address</th><td>The unique on-chain ID of a token.</td></tr>
+          <tr><th scope="row">DEX</th><td>A decentralized exchange where you trade directly from your wallet.</td></tr>
+          <tr><th scope="row">Aggregator</th><td>A service that compares routes across many DEXs to find the best quote.</td></tr>
+          <tr><th scope="row">TVL</th><td>Total value locked in a protocol.</td></tr>
+          <tr><th scope="row">LST</th><td>Liquid staking token, a receipt for staked SOL.</td></tr>
+          <tr><th scope="row">Non-custodial</th><td>You keep your own keys. The service never holds your funds.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+    <section class="section" id="faq">
+      <h2>FAQ</h2>
+      <details open>
+        <summary>What is a mint address and why does it matter?</summary>
+        <p>A mint address is the unique on-chain ID of a token on Solana. Names and tickers can be copied by anyone, so two different tokens can both be called the same thing. The mint address cannot be duplicated, so it is the only reliable way to be sure you are trading the token you mean.</p>
+      </details>
+      <details>
+        <summary>Does "Verified by Jupiter" mean a token is safe?</summary>
+        <p>No. It means the token is on Jupiter's verified list, which is a useful filter but not a safety guarantee. Verified tokens can still lose value, and prices can fall sharply. Always check the mint address, liquidity and the token's own official channels.</p>
+      </details>
+      <details>
+        <summary>What are mint authority and freeze authority?</summary>
+        <p>Mint authority is the power to create more supply of a token. Freeze authority is the power to freeze token accounts so they cannot move tokens. Many legitimate tokens have both disabled, and some have a reason to keep them, but an active authority means the issuer can change the rules after you buy, so it deserves a closer look.</p>
+      </details>
+      <details>
+        <summary>What is slippage and price impact?</summary>
+        <p>Price impact is how much your own trade moves the market price, and it grows with trade size and thin liquidity. Slippage tolerance is the largest price change you accept between the quote and execution. If the price moves past it, the swap does not go through.</p>
+      </details>
+      <details>
+        <summary>What is TVL?</summary>
+        <p>TVL, or total value locked, is the value of assets deposited in a protocol. It is a rough measure of size and usage, not of safety. A protocol with a high TVL can still have bugs or be exploited.</p>
+      </details>
+      <details>
+        <summary>Why does my wallet show a small SOL deposit when I receive a new token?</summary>
+        <p>Solana stores each token you hold in its own token account, which needs a small refundable rent deposit, about 0.002 SOL. If you later close an empty token account, that deposit is returned to you.</p>
+      </details>
+      <details>
+        <summary>What should I do if I think I signed something malicious?</summary>
+        <p>Stop interacting with the site, move your remaining assets to a new wallet created from a fresh seed phrase, and revoke token approvals using a reputable tool. Never share your seed phrase with anyone offering help.</p>
+      </details>
+    </section>
+
+    <section class="section cta-block">
+      <h2>Put it into practice</h2>
+      <p>Search a token, inspect it, and swap non-custodially with no sign-up.</p>
+      <div class="cta-row">
+        <a class="btn" href="/">Start swapping</a>
+        <a class="btn secondary" href="/#protocols-section">Browse protocols</a>
+      </div>
+    </section>
+
+    <p class="disclaimer">This page is educational and is not financial advice. Cryptocurrency trading involves substantial risk, including the risk of total loss. Information may change as protocols update; check official documentation before you act. You are solely responsible for verifying token addresses, transaction details and wallet approvals before you sign.</p>
+  </main>
+
+  <footer>
+    <div class="footer-brand">
+      <img class="brand-icon" src="logo.png" alt="Swap Solana Tokens logo">
+      Swap Solana Tokens
+    </div>
+    <div class="footer-powered">
+      Powered by
+      <a href="https://jup.ag" target="_blank" rel="noopener noreferrer">
+        <img class="jupiter-logo-img" src="https://static.jup.ag/jup/icon.png" alt="Jupiter logo">
+        Jupiter
+      </a>
+      &amp;
+      <a href="https://mayan.finance" target="_blank" rel="noopener noreferrer">
+        <img class="jupiter-logo-img" src="https://www.google.com/s2/favicons?sz=64&domain=mayan.finance" alt="Mayan logo">
+        Mayan
+      </a>
+    </div>
+    <p class="footer-copy"><a href="how-it-works.html" class="footer-contact-email">How it works</a> · <a href="swap-and-bridge-guide.html" class="footer-contact-email">Solana swap &amp; bridge guide</a> · <a href="learn.html" class="footer-contact-email">Learn &amp; safety</a></p>
+    <p class="footer-copy">Not affiliated with Jupiter Exchange or Mayan · Non-custodial · Use at your own risk</p>
+    <p class="footer-copy footer-contact-line">
+      © 2026 Swap Solana Tokens · Contact:
+      <a href="mailto:support@swapsolanatokens.com" class="footer-contact-email">support@swapsolanatokens.com</a>
+      <span class="footer-contact-sep">·</span>
+      <a class="social-link-inline" href="https://x.com/swapsolanasite" target="_blank" rel="noopener noreferrer" aria-label="Swap Solana Tokens on X">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+      </a>
+      <span class="footer-contact-sep">·</span>
+      <a class="social-link-inline" href="https://t.me/SwapSolanaTokens" target="_blank" rel="noopener noreferrer" aria-label="Swap Solana Tokens on Telegram">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M21.94 4.6 18.6 20.16c-.25 1.13-.9 1.4-1.83.87l-5.06-3.73-2.44 2.35c-.27.27-.5.5-1.02.5l.36-5.16 9.4-8.5c.41-.36-.09-.56-.63-.2L6.3 13.06l-5.02-1.57c-1.09-.34-1.11-1.09.23-1.61L20.6 3.32c.91-.33 1.71.22 1.34 1.28z"/>
+        </svg>
+      </a>
+    </p>
+  </footer>
+</body>
+</html>
