@@ -1,0 +1,218 @@
+/* ============================================================
+   momentum.css — "Top Momentum" panel (index.html)
+   Loaded after shared.css. The panel container reuses the
+   .top100-container / .top100-* classes defined in index.html.
+   CSP: style-src 'self' already allows this file.
+   ============================================================ */
+
+.mom-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 640px) {
+  .mom-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 960px) {
+  .mom-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1200px) {
+  .mom-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+.mom-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+.mom-card-top {
+  border-color: rgba(199, 242, 132, 0.45);
+  box-shadow: 0 0 22px rgba(199, 242, 132, 0.08);
+}
+
+.mom-head {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.mom-head .mom-risk {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.mom-rank {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: rgba(232, 249, 255, 0.4);
+}
+.mom-id { min-width: 0; }
+.mom-id .top100-name { max-width: 100%; }
+.mom-mint {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: rgba(232, 249, 255, 0.4);
+}
+
+.mom-risk {
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.mom-risk.low {
+  color: #7ee787;
+  background: rgba(126, 231, 135, 0.1);
+  border: 1px solid rgba(126, 231, 135, 0.35);
+}
+.mom-risk.medium {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.mom-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.mom-score {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #c7f284;
+  font-variant-numeric: tabular-nums;
+}
+.mom-score-sub {
+  font-size: 12.5px;
+  color: rgba(232, 249, 255, 0.45);
+}
+.mom-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin-top: -4px;
+}
+.mom-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c7f284, #9b8cff);
+}
+
+.mom-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+.mom-metric {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.mom-metric-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(232, 249, 255, 0.4);
+}
+.mom-metric-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8f9ff;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mom-metric-value.mom-up { color: #7ee787; }
+.mom-metric-value.mom-down { color: #ff7b72; }
+
+.mom-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mom-chip {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 1px 7px;
+  border: 1px solid;
+}
+.mom-chip.ok {
+  color: #7ee787;
+  background: rgba(126, 231, 135, 0.08);
+  border-color: rgba(126, 231, 135, 0.3);
+}
+.mom-chip.warn {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+.mom-chip.bad {
+  color: #ff7b72;
+  background: rgba(255, 123, 114, 0.1);
+  border-color: rgba(255, 123, 114, 0.35);
+}
+.mom-chip.na {
+  color: rgba(232, 249, 255, 0.55);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.mom-details {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 8px;
+}
+.mom-details summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #9b8cff;
+  list-style: none;
+}
+.mom-details summary::-webkit-details-marker { display: none; }
+.mom-details summary::after { content: " +"; }
+.mom-details[open] summary::after { content: " \2212"; }
+.mom-part {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.mom-part-label { color: #e8f9ff; font-weight: 600; }
+.mom-part-pts {
+  color: #c7f284;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.mom-part-detail {
+  grid-column: 1 / -1;
+  color: rgba(232, 249, 255, 0.45);
+}
+.mom-details-note {
+  margin: 10px 0 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: rgba(232, 249, 255, 0.45);
+}
+
+.mom-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+}
