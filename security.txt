@@ -1,0 +1,4 @@
+Contact: mailto:support@swapsolanatokens.com
+Expires: 2027-06-30T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://swapsolanatokens.com/.well-known/security.txt

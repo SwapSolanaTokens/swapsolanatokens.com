@@ -1,0 +1,8 @@
+.vercel
+.env
+.env.*
+*.pem
+*.key
+*.crt
+.DS_Store
+# Never commit Cloudflare Origin CA certificates or private keys.
