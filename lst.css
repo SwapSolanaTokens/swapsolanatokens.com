@@ -1,0 +1,94 @@
+/* ============================================================
+   lst.css — "Liquid staking" APY panel (index.html)
+   Sits between the chart and the Trending / Top volume panels.
+   Reuses .chart-header, .movers-note, .mover-icon, .top100-swap-btn
+   and .proto-retry from index.html. CSP: style-src 'self' allows this file.
+   ============================================================ */
+
+.lst-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+.tab-panel .lst-panel { flex: 0 1 480px; }
+
+.lst-panel .chart-header { padding: 0 4px; }
+
+.lst-status {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(232, 249, 255, 0.45);
+}
+.lst-status:empty { display: none; }
+
+.lst-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 520px) {
+  .lst-grid { grid-template-columns: 1fr; }
+}
+
+.lst-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.lst-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+.lst-sym {
+  font-weight: 700;
+  font-size: 14.5px;
+  color: #e8f9ff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lst-tvl {
+  font-size: 12px;
+  color: rgba(232, 249, 255, 0.5);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lst-apy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+.lst-apy-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #7ee787;
+  font-variant-numeric: tabular-nums;
+}
+.lst-apy-value.na { color: rgba(232, 249, 255, 0.45); font-size: 14px; }
+.lst-apy-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(232, 249, 255, 0.4);
+}
+
+.lst-note {
+  font-size: 11.5px;
+  line-height: 1.4;
+}
