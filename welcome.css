@@ -1,0 +1,106 @@
+/* ============================================================
+   welcome.css: welcome headline + Sol Incinerator card (index.html)
+   CSP: style-src 'self' already allows this file.
+   ============================================================ */
+
+/* ---- Welcome headline (between the menu bar and the swap / chart) ---- */
+.welcome {
+  width: 100%;
+  max-width: 900px;
+  margin: 18px auto -8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.welcome-title {
+  margin: 0;
+  font-size: clamp(34px, 4.6vw, 52px);
+  font-weight: 800;
+  line-height: 1.25;
+  padding-bottom: 0.12em;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #d4ff7a 10%, #c7f284 40%, #9b8cff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-wrap: balance;
+}
+.welcome-sub {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.5;
+  color: rgba(232, 249, 255, 0.6);
+  text-wrap: balance;
+}
+/* Phones: only a smaller title, so the swap does not move far down */
+@media (max-width: 640px) {
+  .welcome {
+    margin: 0 auto -10px;
+  }
+  .welcome-title {
+    font-size: 21px;
+    letter-spacing: -0.02em;
+  }
+  .welcome-sub {
+    display: none;
+  }
+}
+
+/* ---- Sol Incinerator card: two plain link buttons, nothing else ---- */
+.incin-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.incin-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 380px) {
+  .incin-links { grid-template-columns: 1fr; }
+}
+.incin-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  height: 52px;
+  padding: 0 14px;
+  color: #ffd9c2;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  background: linear-gradient(180deg, rgba(255, 106, 26, 0.16), rgba(255, 69, 0, 0.06));
+  border: 1px solid rgba(255, 106, 26, 0.45);
+  border-radius: 10px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.incin-link:hover,
+.incin-link:focus-visible {
+  color: #ffffff;
+  background: linear-gradient(180deg, rgba(255, 106, 26, 0.34), rgba(255, 69, 0, 0.16));
+  border-color: rgba(255, 140, 66, 0.9);
+  box-shadow: 0 0 18px rgba(255, 106, 26, 0.28);
+  outline: none;
+}
+.incin-link svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  color: #e4ff3a;
+}
+.incin-link:hover svg,
+.incin-link:focus-visible svg {
+  color: #f3ff8a;
+}
